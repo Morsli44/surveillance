@@ -215,6 +215,30 @@
             gap: 5px;
         }
 
+        /* ستايل خاص بالسحب والإفلات */
+        .draggable-item {
+            cursor: grab;
+            transition: background-color 0.2s, opacity 0.2s;
+            user-select: none;
+        }
+
+        .draggable-item:active {
+            cursor: grabbing;
+        }
+
+        .draggable-item.dragging {
+            opacity: 0.4;
+            background-color: #e9ecef;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: #888;
+            margin-right: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
         .badge {
             background-color: #e9ecef;
             padding: 4px 8px;
@@ -313,7 +337,7 @@
         }
 
         @media print {
-            .no-print, button, input, select, .move-btns {
+            .no-print, button, input, select, .move-btns, .drag-handle {
                 display: none !important;
             }
             body { background-color: #fff; }
@@ -479,7 +503,7 @@
 
     <!-- Ordre de la file d'attente générale -->
     <div class="card no-print">
-        <h4>File d'attente générale (Ajustement manuel)</h4>
+        <h4>File d'attente générale (Ajustement manuel / Glisser-déposer)</h4>
         <ul id="queueList"></ul>
     </div>
 
@@ -546,6 +570,7 @@
     let fireHistory = JSON.parse(localStorage.getItem('shift_fire_history_v25')) || [];
 
     let comparisonChartInstance = null;
+    let draggedIndex = null;
 
     function saveData() {
         localStorage.setItem('shift_queue_v25', JSON.stringify(queue));
@@ -939,7 +964,6 @@
         const workers = Object.keys(points);
         if (workers.length === 0) return null;
 
-        // التحقق مما إذا كان جميع الأعضاء متساويين تماماً (في بداية الدورة)
         const firstEquiv = getEquivalentNormalMinutes(workers[0]);
         const allEqual = workers.every(w => getEquivalentNormalMinutes(w) === firstEquiv);
 
@@ -981,7 +1005,6 @@
         const filter = document.getElementById('historyFilter').value;
         historyList.innerHTML = '';
 
-        // ترتيب من الأقدم إلى الأحدث (تصاعدي حسب Timestamp)
         history.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
         const filteredHistory = filter === 'ALL' ? history : history.filter(h => h.worker.includes(filter));
@@ -1182,7 +1205,6 @@
 
         fireHistoryContainer.innerHTML = '';
 
-        // ترتيب من الأقدم إلى الأحدث (تصاعدي حسب Timestamp)
         fireHistory.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
         if (fireHistory.length === 0) {
@@ -1209,6 +1231,34 @@
                 fireHistoryContainer.appendChild(li);
             });
         }
+    }
+
+    /* دالة تجهيز حدث السحب والإفلات */
+    function handleDragAndDrop(li, index) {
+        li.addEventListener('dragstart', (e) => {
+            draggedIndex = index;
+            li.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        li.addEventListener('dragend', () => {
+            li.classList.remove('dragging');
+            draggedIndex = null;
+        });
+
+        li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedIndex !== null && draggedIndex !== index) {
+                const movedItem = queue.splice(draggedIndex, 1)[0];
+                queue.splice(index, 0, movedItem);
+                saveData();
+            }
+        });
     }
 
     function render() {
@@ -1288,12 +1338,19 @@
             });
         }
 
+        /* عرض قائمة الانتظار مع السحب والإفلات */
         const queueList = document.getElementById('queueList');
         queueList.innerHTML = '';
         queue.forEach((worker, index) => {
             const li = document.createElement('li');
+            li.draggable = true;
+            li.className = 'draggable-item';
+            
             li.innerHTML = `
-                <span><strong>#${index + 1}</strong> - ${worker}</span>
+                <div style="display:flex; align-items:center;">
+                    <span class="drag-handle" title="Glisser pour déplacer">☰</span>
+                    <span><strong>#${index + 1}</strong> - ${worker}</span>
+                </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                     <div class="move-btns">
                         <button class="btn-secondary btn-sm" onclick="moveQueue(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4"' : ''}>▲</button>
@@ -1302,6 +1359,8 @@
                     <button class="btn-danger btn-sm" onclick="removeWorkerFromQueue('${worker}')">Retirer</button>
                 </div>
             `;
+
+            handleDragAndDrop(li, index);
             queueList.appendChild(li);
         });
 
