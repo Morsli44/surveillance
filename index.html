@@ -1,12 +1,1336 @@
-const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin - points[a].criticalMin);
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de Gestion des surveillances</title>
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --primary-color: #0d6efd;
+            --success-color: #198754;
+            --warning-color: #fd7e14;
+            --danger-color: #dc3545;
+            --info-color: #0dcaf0;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --fire-color: #d32f2f;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 12px;
+        }
+
+        h2, h3, h4 {
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 12px;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .card-fire {
+            border: 2px solid var(--fire-color);
+            background-color: #fff5f5;
+        }
+
+        .current-turn {
+            background-color: #e7f1ff;
+            border: 2px solid var(--primary-color);
+            text-align: center;
+        }
+
+        .active-surveillance-card {
+            background-color: #fff8e1;
+            border: 2px solid var(--warning-color);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .fire-plan-card {
+            background-color: #ffebee;
+            border: 2px solid var(--fire-color);
+            margin-bottom: 10px;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .suggestion-card {
+            background-color: #e0f7fa;
+            border: 2px dashed #00acc1;
+            text-align: center;
+        }
+
+        .worker-name {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: var(--danger-color);
+            margin: 8px 0;
+        }
+
+        .suggested-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00796b;
+            margin: 5px 0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 130px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: left;
+        }
+
+        .input-field label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        input, select {
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            margin-top: 5px;
+            cursor: pointer;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .team-selection-box {
+            display: none;
+            background-color: #f3e5f5;
+            border: 1px solid #ce93d8;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: left;
+        }
+
+        .team-selection-box h5 {
+            margin: 0 0 8px 0;
+            color: #4a148c;
+        }
+
+        .workers-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 6px;
+        }
+
+        .worker-chip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #d1c4e9;
+            font-size: 0.85rem;
+        }
+
+        button {
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: var(--primary-color);
+        }
+
+        .btn-success { background-color: var(--success-color); }
+        .btn-warning { background-color: var(--warning-color); }
+        .btn-danger { background-color: var(--danger-color); }
+        .btn-fire { background-color: var(--fire-color); }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+
+        #fireModuleSection {
+            display: none;
+            margin-top: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .badge {
+            background-color: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .badge-type {
+            background-color: #e3f2fd;
+            color: #0d6efd;
+            border: 1px solid #90caf9;
+        }
+
+        .badge-location {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .badge-extra {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+            border: 1px solid #ce93d8;
+        }
+
+        .badge-fire {
+            background-color: #ffebee;
+            color: var(--fire-color);
+            border: 1px solid #ffcdd2;
+        }
+
+        .badge-critical {
+            background-color: #ffe6e6;
+            color: var(--danger-color);
+        }
+
+        .badge-normal {
+            background-color: #e6ffed;
+            color: var(--success-color);
+        }
+
+        .badge-total {
+            background-color: #e0f2fe;
+            color: #0369a1;
+        }
+
+        .rank-badge {
+            background-color: #ffc107;
+            color: #000;
+            font-weight: bold;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-right: 6px;
+        }
+
+        .status-tag {
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+
+        .tag-critical { background-color: #ffe6e6; color: var(--danger-color); }
+        .tag-normal { background-color: #e6ffed; color: var(--success-color); }
+
+        .move-btns {
+            display: flex;
+            gap: 2px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 420px;
+            margin-top: 10px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            .no-print, button, input, select, .move-btns {
+                display: none !important;
+            }
+            body { background-color: #fff; }
+            .card { box-shadow: none; border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="reportArea">
+    <h2>Système de Gestion des surveillances EQUIPE A</h2>
+
+    <!-- Bouton Télécharger PDF -->
+    <div style="margin-bottom: 15px; text-align: right;" class="no-print">
+        <button class="btn-secondary" id="pdfBtn" onclick="exportToPDF()">📄 Télécharger le rapport (PDF)</button>
+    </div>
+
+    <!-- Ajouter un nouveau travailleur -->
+    <div class="card no-print">
+        <h4>Ajouter un agent à la liste générale</h4>
+        <div class="input-group">
+            <input type="text" id="workerInput" placeholder="Nom de l'agent">
+            <button onclick="addWorker()">Ajouter</button>
+        </div>
+    </div>
+
+    <!-- Recommandation de la prochaine garde -->
+    <div class="card suggestion-card no-print">
+        <h4 style="color: #00695c; margin-bottom: 2px;">💡 Agent recommandé pour la prochaine surveillance</h4>
+        <div class="suggested-name" id="suggestedWorker">Calcul en cours...</div>
+        <div id="suggestionReason" style="font-size: 0.85rem; color: #555;"></div>
+        <button class="btn-sm btn-success" style="margin-top: 8px;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
+    </div>
+
+    <!-- Agent de garde / Lancement de surveillance générale -->
+    <div class="card current-turn no-print">
+        <h4>Responsable actuel de la surveillance</h4>
+        <div class="worker-name" id="currentWorker">Aucun agent</div>
+        <div id="timeStatus" class="status-tag"></div>
+
+        <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
+            <label class="checkbox-container">
+                <input type="checkbox" id="etablissementCheck" onchange="toggleEtablissementMode()">
+                <span style="font-size: 0.85rem; font-weight: bold; color: #4a148c;">🔧 Établissement (+30 min fixes)</span>
+            </label>
+
+            <div class="input-group" style="margin-top:10px;">
+                <div class="input-field" id="surveillanceTypeContainer">
+                    <label>Type de surveillance :</label>
+                    <select id="surveillanceType">
+                        <option value="À froid">À froid</option>
+                        <option value="À chaud">À chaud</option>
+                        <option value="Chargement MeOH">Chargement MeOH</option>
+                        <option value="Pénétration">Pénétration</option>
+                        <option value="Levage">Levage</option>
+                    </select>
+                </div>
+                <div class="input-field">
+                    <label>Lieu / Zone :</label>
+                    <select id="surveillanceLocation">
+                        <optgroup label="Unité MeOH">
+                            <option value="Unité MeOH - V601">Unité MeOH (V601)</option>
+                            <option value="Unité MeOH - V602">Unité MeOH (V602)</option>
+                            <option value="Unité MeOH - K401">Unité MeOH (K401)</option>
+                            <option value="Unité MeOH - H301">Unité MeOH (H301)</option>
+                            <option value="Unité MeOH - F201">Unité MeOH (F201)</option>
+                        </optgroup>
+                        <optgroup label="Autres Unités">
+                            <option value="Unité 100">Unité 100</option>
+                            <option value="MTBE">MTBE</option>
+                        </optgroup>
+                        <optgroup label="Unité 200">
+                            <option value="Unité 200 - Chargement MeOH">Unité 200 (Chargement MeOH)</option>
+                        </optgroup>
+                        <optgroup label="Station">
+                            <option value="Station Gaz">Station Gaz</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-field">
+                    <label>Heure de départ:</label>
+                    <input type="time" id="startTime">
+                </div>
+            </div>
+
+            <div id="teamContainer" class="team-selection-box">
+                <h5>👥 Sélectionner les agents participants (Travail d'équipe) :</h5>
+                <div class="workers-checkbox-grid" id="teamCheckboxes"></div>
+            </div>
+
+            <button id="startBtn" class="btn-primary" style="width: 100%; margin-top: 12px;" onclick="startIntervention()">🚀 Démarrer la surveillance</button>
+        </div>
+    </div>
+
+    <!-- MODULE : Vérification Réseau & Extincteurs -->
+    <div style="margin-bottom: 15px;" class="no-print">
+        <button class="btn-fire" style="width: 100%; padding: 12px; font-size: 1rem; box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);" onclick="toggleFireModule()">
+            🧯 Afficher / Masquer Vérification Réseau & Extincteurs
+        </button>
+    </div>
+
+    <div id="fireModuleSection" class="no-print">
+        <div class="card card-fire">
+            <h4 style="color: var(--fire-color); margin-bottom: 5px;">🧯 Planification : Vérification Réseau & Extincteurs</h4>
+            
+            <div class="input-group" style="margin-top: 10px;">
+                <div class="input-field">
+                    <label>Agent 1 (Obligatoire) :</label>
+                    <select id="fireInputAgent1"></select>
+                </div>
+                <div class="input-field">
+                    <label>Agent 2 (Optionnel - Binôme) :</label>
+                    <select id="fireInputAgent2">
+                        <option value="">-- Seul (1 agent) --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-field">
+                    <label>Type de vérification :</label>
+                    <select id="fireInputType">
+                        <option value="Réseau d'eau">Réseau d'eau (شبكة الماء)</option>
+                        <option value="Extincteurs">Extincteurs (المطفآت)</option>
+                        <option value="Réseau d'eau + Extincteurs">Réseau d'eau + Extincteurs</option>
+                    </select>
+                </div>
+                <div class="input-field">
+                    <label>Date de vérification :</label>
+                    <input type="date" id="fireInputDate">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-field">
+                    <label>Heure de début :</label>
+                    <input type="time" id="fireInputStartTime">
+                </div>
+            </div>
+
+            <button class="btn-fire" style="width: 100%; margin-top: 10px;" onclick="addFirePlan()">➕ Ajouter à la liste de travail</button>
+        </div>
+
+        <div class="card" style="border-left: 5px solid var(--fire-color);">
+            <h4 style="color: var(--fire-color);">📋 Liste de travail (Planification)</h4>
+            <div id="firePlannedList"></div>
+        </div>
+
+        <div class="card" style="border-top: 4px solid var(--fire-color);">
+            <h4 style="color: var(--fire-color);">📜 Historique des Vérifications Incendie</h4>
+            <ul id="fireHistoryList"></ul>
+        </div>
+    </div>
+
+    <!-- Surveillances En Cours -->
+    <div class="card no-print" style="border: 2px solid var(--warning-color);">
+        <h4 style="color: var(--warning-color);">⏳ Surveillances générales en cours</h4>
+        <div id="activeSurveillancesList"></div>
+    </div>
+
+    <!-- Ordre de la file d'attente générale -->
+    <div class="card no-print">
+        <h4>File d'attente générale (Ajustement manuel)</h4>
+        <ul id="queueList"></ul>
+    </div>
+
+    <!-- Classement Temps Équivalent -->
+    <div class="card">
+        <h4>⚖ Classement Équitable (Normales + Critiques × 2)</h4>
+        <ul id="totalTimeRankList"></ul>
+    </div>
+
+    <!-- Classement détaillé -->
+    <div class="grid-2">
+        <div class="card">
+            <h4>🚨 Classement Heures Critiques (x2)</h4>
+            <ul id="criticalRankList"></ul>
+        </div>
+        <div class="card">
+            <h4>☀ Classement Heures Normales (x1)</h4>
+            <ul id="normalRankList"></ul>
+        </div>
+    </div>
+
+    <!-- Graphique -->
+    <div class="card">
+        <h4>Comparatif des heures de travail (Graphique)</h4>
+        <div class="canvas-container">
+            <canvas id="comparisonChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Bilan cumulatif global -->
+    <div class="card">
+        <h4>Bilan cumulatif global (Trier par points)</h4>
+        <ul id="statsList"></ul>
+    </div>
+
+    <!-- Historique des surveillances générales -->
+    <div class="card">
+        <h4>Historique des surveillances générales</h4>
+        <select id="historyFilter" class="no-print" style="margin-bottom: 10px;" onchange="renderHistory()">
+            <option value="ALL">Afficher tout l'historique</option>
+        </select>
+        <ul id="historyList"></ul>
+        <br>
+        <button class="btn-danger no-print" style="width:100%" onclick="resetAllData()">Réinitialiser le système</button>
+    </div>
+</div>
+
+<script>
+    const defaultWorkers = ['Benyoub', 'Boumedine', 'Chalal', 'Dahmani', 'Fredj', 'Talbi'];
+
+    let queue = JSON.parse(localStorage.getItem('shift_queue_v25')) || [...defaultWorkers];
+    let points = JSON.parse(localStorage.getItem('shift_points_v25')) || {
+        'Benyoub': { normalMin: 0, criticalMin: 0, points: 0 },
+        'Boumedine': { normalMin: 0, criticalMin: 0, points: 0 },
+        'Chalal': { normalMin: 0, criticalMin: 0, points: 0 },
+        'Dahmani': { normalMin: 0, criticalMin: 0, points: 0 },
+        'Fredj': { normalMin: 0, criticalMin: 0, points: 0 },
+        'Talbi': { normalMin: 0, criticalMin: 0, points: 0 }
+    };
+    let activeSurveillances = JSON.parse(localStorage.getItem('shift_active_v25')) || [];
+    let history = JSON.parse(localStorage.getItem('shift_history_v25')) || [];
+    
+    let firePlans = JSON.parse(localStorage.getItem('shift_fire_plans_v25')) || [];
+    let fireHistory = JSON.parse(localStorage.getItem('shift_fire_history_v25')) || [];
+
+    let comparisonChartInstance = null;
+
+    function saveData() {
+        localStorage.setItem('shift_queue_v25', JSON.stringify(queue));
+        localStorage.setItem('shift_points_v25', JSON.stringify(points));
+        localStorage.setItem('shift_active_v25', JSON.stringify(activeSurveillances));
+        localStorage.setItem('shift_history_v25', JSON.stringify(history));
+        localStorage.setItem('shift_fire_plans_v25', JSON.stringify(firePlans));
+        localStorage.setItem('shift_fire_history_v25', JSON.stringify(fireHistory));
+        render();
+    }
+
+    function toggleFireModule() {
+        const fireModule = document.getElementById('fireModuleSection');
+        if (fireModule.style.display === 'none' || fireModule.style.display === '') {
+            fireModule.style.display = 'block';
+        } else {
+            fireModule.style.display = 'none';
+        }
+    }
+
+    function formatTime(totalMinutes) {
+        const hrs = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+        const mins = String(totalMinutes % 60).padStart(2, '0');
+        return `${hrs}h: ${mins}min`;
+    }
+
+    function setCurrentTimeDefaults() {
+        const now = new Date();
+        const timeStr = now.toTimeString().substring(0, 5);
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+
+        const startTime = document.getElementById('startTime');
+        const fireStartTime = document.getElementById('fireInputStartTime');
+        const fireDate = document.getElementById('fireInputDate');
+
+        if (startTime) startTime.value = timeStr;
+        if (fireStartTime) fireStartTime.value = timeStr;
+        if (fireDate) fireDate.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    function isCriticalHour(hour) {
+        return (hour >= 16 && hour < 19) || (hour >= 0 && hour < 7);
+    }
+
+    function getEquivalentNormalMinutes(worker) {
+        const w = points[worker];
+        if (!w) return 0;
+        return w.normalMin + (w.criticalMin * 2);
+    }
+
+    function toggleEtablissementMode() {
+        const isChecked = document.getElementById('etablissementCheck').checked;
+        const typeSelect = document.getElementById('surveillanceType');
+        const typeContainer = document.getElementById('surveillanceTypeContainer');
+        const teamContainer = document.getElementById('teamContainer');
+        const startBtn = document.getElementById('startBtn');
+
+        if (isChecked) {
+            typeContainer.style.opacity = '0.4';
+            typeSelect.disabled = true;
+            teamContainer.style.display = 'block';
+            renderTeamCheckboxes();
+            if (startBtn) startBtn.innerHTML = '🛠️ Mise en place d\'un établissement';
+        } else {
+            typeContainer.style.opacity = '1';
+            typeSelect.disabled = false;
+            teamContainer.style.display = 'none';
+            if (startBtn) startBtn.innerHTML = '🚀 Démarrer la surveillance';
+        }
+    }
+
+    function renderTeamCheckboxes() {
+        const teamBox = document.getElementById('teamCheckboxes');
+        teamBox.innerHTML = '';
+        
+        const mainWorker = queue[0];
+        const otherWorkers = Object.keys(points).filter(w => w !== mainWorker);
+
+        otherWorkers.forEach(worker => {
+            const label = document.createElement('label');
+            label.className = 'worker-chip';
+            label.innerHTML = `
+                <input type="checkbox" class="team-member-checkbox" value="${worker}">
+                <span>${worker}</span>
+            `;
+            teamBox.appendChild(label);
+        });
+    }
+
+    function addWorker() {
+        const input = document.getElementById('workerInput');
+        const name = input.value.trim();
+        if (name && !queue.includes(name)) {
+            queue.push(name);
+            if (!(name in points)) {
+                points[name] = { normalMin: 0, criticalMin: 0, points: 0 };
+            }
+            input.value = '';
+            saveData();
+        }
+    }
+
+    function moveQueue(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex >= 0 && targetIndex < queue.length) {
+            const temp = queue[index];
+            queue[index] = queue[targetIndex];
+            queue[targetIndex] = temp;
+            saveData();
+        }
+    }
+
+    function removeWorkerFromQueue(name) {
+        queue = queue.filter(w => w !== name);
+        saveData();
+    }
+
+    function removeWorkerCompletely(name) {
+        if (confirm(`Voulez-vous vraiment supprimer l'agent (${name}) ?`)) {
+            queue = queue.filter(w => w !== name);
+            delete points[name];
+            saveData();
+        }
+    }
+
+    function editWorkerStats(name) {
+        const cur = points[name];
+        const newNormalH = prompt(`Heures normales pour (${name}):`, Math.floor(cur.normalMin / 60));
+        const newNormalM = prompt(`Minutes normales pour (${name}):`, cur.normalMin % 60);
+        const newCritH = prompt(`Heures critiques pour (${name}):`, Math.floor(cur.criticalMin / 60));
+        const newCritM = prompt(`Minutes critiques pour (${name}):`, cur.criticalMin % 60);
+
+        if (newNormalH !== null && newCritH !== null) {
+            const nMin = (parseInt(newNormalH) || 0) * 60 + (parseInt(newNormalM) || 0);
+            const cMin = (parseInt(newCritH) || 0) * 60 + (parseInt(newCritM) || 0);
+            const pts = (nMin / 60) + ((cMin / 60) * 2);
+
+            points[name] = {
+                normalMin: nMin,
+                criticalMin: cMin,
+                points: parseFloat(pts.toFixed(2))
+            };
+            saveData();
+        }
+    }
+
+    function startIntervention() {
+        if (queue.length === 0) {
+            alert('Aucun agent disponible dans la file.');
+            return;
+        }
+
+        const startVal = document.getElementById('startTime').value;
+        const hasEtablissement = document.getElementById('etablissementCheck').checked;
+        const typeVal = hasEtablissement ? 'Établissement' : document.getElementById('surveillanceType').value;
+        const locationVal = document.getElementById('surveillanceLocation').value;
+
+        if (!startVal) {
+            alert('Veuillez sélectionner l\'heure de départ.');
+            return;
+        }
+
+        const mainWorker = queue.shift();
+        let team = [mainWorker];
+
+        if (hasEtablissement) {
+            const checkedBoxes = document.querySelectorAll('.team-member-checkbox:checked');
+            checkedBoxes.forEach(cb => {
+                team.push(cb.value);
+            });
+        }
+
+        const activeItem = {
+            id: Date.now(),
+            worker: mainWorker,
+            team: team,
+            type: typeVal,
+            location: locationVal,
+            hasEtablissement: hasEtablissement,
+            startTime: startVal,
+            startDateStr: new Date().toDateString()
+        };
+
+        activeSurveillances.push(activeItem);
+        queue.push(mainWorker);
+        
+        document.getElementById('etablissementCheck').checked = false;
+        toggleEtablissementMode();
+
+        saveData();
+        setCurrentTimeDefaults();
+    }
+
+    function addFirePlan() {
+        const a1 = document.getElementById('fireInputAgent1').value;
+        const a2 = document.getElementById('fireInputAgent2').value;
+        const typeVal = document.getElementById('fireInputType').value;
+        const dateVal = document.getElementById('fireInputDate').value;
+        const startVal = document.getElementById('fireInputStartTime').value;
+
+        if (!a1) {
+            alert('Veuillez choisir au moins le premier agent.');
+            return;
+        }
+        if (a1 === a2) {
+            alert('Veuillez choisir deux agents différents.');
+            return;
+        }
+        if (!dateVal || !startVal) {
+            alert('Veuillez spécifier la date et l\'heure de début.');
+            return;
+        }
+
+        let team = [a1];
+        if (a2) team.push(a2);
+
+        const planItem = {
+            id: Date.now(),
+            team: team,
+            type: typeVal,
+            date: dateVal,
+            startTime: startVal
+        };
+
+        firePlans.push(planItem);
+        saveData();
+    }
+
+    function deleteFirePlan(id) {
+        firePlans = firePlans.filter(p => p.id !== id);
+        saveData();
+    }
+
+    function confirmFirePlan(id) {
+        const index = firePlans.findIndex(p => p.id === id);
+        if (index === -1) return;
+
+        const plan = firePlans[index];
+        const endInput = document.getElementById(`fireEndTime_${id}`);
+        const endVal = endInput ? endInput.value : '';
+
+        if (!endVal) {
+            alert('Veuillez indiquer l\'heure de fin de vérification.');
+            return;
+        }
+
+        const startDate = new Date(plan.date + 'T' + plan.startTime);
+        let endDate = new Date(plan.date + 'T' + endVal);
+
+        if (endDate <= startDate) {
+            endDate.setDate(endDate.getDate() + 1);
+        }
+
+        let realDurationMinutes = Math.round((endDate - startDate) / 60000);
+        let normalMin = 0;
+        let criticalMin = 0;
+        let tempDate = new Date(startDate.getTime());
+
+        while (tempDate < endDate) {
+            if (isCriticalHour(tempDate.getHours())) criticalMin++;
+            else normalMin++;
+            tempDate.setMinutes(tempDate.getMinutes() + 1);
+        }
+
+        const earnedPoints = (normalMin / 60) + ((criticalMin / 60) * 2);
+
+        plan.team.forEach(w => {
+            if (!points[w]) points[w] = { normalMin: 0, criticalMin: 0, points: 0 };
+            points[w].normalMin += normalMin;
+            points[w].criticalMin += criticalMin;
+            points[w].points += parseFloat(earnedPoints.toFixed(2));
+        });
+
+        fireHistory.push({
+            id: Date.now(),
+            team: plan.team.join(', '),
+            type: plan.type,
+            date: plan.date,
+            timeRange: `${plan.startTime} - ${endVal}`,
+            durationMin: realDurationMinutes,
+            normalMin: normalMin,
+            criticalMin: criticalMin,
+            points: earnedPoints.toFixed(2),
+            timestamp: startDate.getTime()
+        });
+
+        firePlans.splice(index, 1);
+        saveData();
+    }
+
+    function finishIntervention(id) {
+        const index = activeSurveillances.findIndex(item => item.id === id);
+        if (index === -1) return;
+
+        const item = activeSurveillances[index];
+        const startDate = new Date(item.startDateStr + ' ' + item.startTime);
+
+        let normalMin = 0;
+        let criticalMin = 0;
+        let totalMinutesWithExtra = 0;
+        let dateStr = "";
+
+        if (item.hasEtablissement) {
+            normalMin = 30;
+            criticalMin = 0;
+            totalMinutesWithExtra = 30;
+
+            const yyyy = startDate.getFullYear();
+            const mm = String(startDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(startDate.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd} | Heure de départ: ${item.startTime}`;
+        } else {
+            const endInput = document.getElementById(`endTime_${id}`);
+            const endVal = endInput ? endInput.value : '';
+
+            if (!endVal) {
+                alert('Veuillez sélectionner l\'heure de retour.');
+                return;
+            }
+
+            let endDate = new Date(item.startDateStr + ' ' + endVal);
+            if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+            let realDurationMinutes = Math.round((endDate - startDate) / 60000);
+            let tempDate = new Date(startDate.getTime());
+
+            while (tempDate < endDate) {
+                if (isCriticalHour(tempDate.getHours())) criticalMin++;
+                else normalMin++;
+                tempDate.setMinutes(tempDate.getMinutes() + 1);
+            }
+
+            totalMinutesWithExtra = realDurationMinutes;
+
+            const yyyy = startDate.getFullYear();
+            const mm = String(startDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(startDate.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd} | ${item.startTime} - ${endVal}`;
+        }
+
+        const earnedPoints = (normalMin / 60) + ((criticalMin / 60) * 2);
+        const workersArray = item.team && item.team.length > 0 ? item.team : [item.worker];
+
+        workersArray.forEach(w => {
+            if (!points[w]) points[w] = { normalMin: 0, criticalMin: 0, points: 0 };
+            points[w].normalMin += normalMin;
+            points[w].criticalMin += criticalMin;
+            points[w].points += parseFloat(earnedPoints.toFixed(2));
+        });
+
+        history.push({
+            worker: workersArray.join(', '),
+            type: item.type,
+            location: item.location,
+            hasEtablissement: item.hasEtablissement,
+            durationMin: totalMinutesWithExtra,
+            normalMin: normalMin,
+            criticalMin: criticalMin,
+            points: earnedPoints.toFixed(2),
+            date: dateStr,
+            timestamp: startDate.getTime()
+        });
+
+        activeSurveillances.splice(index, 1);
+        saveData();
+    }
+
+    function resetAllData() {
+        if (confirm('Attention : Toutes les données seront supprimées définitivement ! Continuer ?')) {
+            localStorage.clear();
+            queue = [...defaultWorkers];
+            points = {
+                'Benyoub': { normalMin: 0, criticalMin: 0, points: 0 },
+                'Boumedine': { normalMin: 0, criticalMin: 0, points: 0 },
+                'Chalal': { normalMin: 0, criticalMin: 0, points: 0 },
+                'Dahmani': { normalMin: 0, criticalMin: 0, points: 0 },
+                'Fredj': { normalMin: 0, criticalMin: 0, points: 0 },
+                'Talbi': { normalMin: 0, criticalMin: 0, points: 0 }
+            };
+            activeSurveillances = [];
+            history = [];
+            firePlans = [];
+            fireHistory = [];
+            saveData();
+        }
+    }
+
+    function getSuggestedWorker() {
+        const workers = Object.keys(points);
+        if (workers.length === 0) return null;
+
+        let sortedByEquivDesc = [...workers].sort((a, b) => {
+            const equivA = getEquivalentNormalMinutes(a);
+            const equivB = getEquivalentNormalMinutes(b);
+            if (equivA !== equivB) {
+                return equivB - equivA;
+            }
+            return points[b].normalMin - points[a].normalMin;
+        });
+
+        const bestWorker = sortedByEquivDesc[sortedByEquivDesc.length - 1];
+
+        let prevWorker = null;
+        let diffNormalMin = 0;
+        let diffCriticalMin = 0;
+
+        if (sortedByEquivDesc.length > 1) {
+            prevWorker = sortedByEquivDesc[sortedByEquivDesc.length - 2];
+            diffNormalMin = Math.max(0, points[prevWorker].normalMin - points[bestWorker].normalMin);
+            diffCriticalMin = Math.max(0, points[prevWorker].criticalMin - points[bestWorker].criticalMin);
+        }
+
+        return { 
+            worker: bestWorker, 
+            diffNormalMin: diffNormalMin,
+            diffCriticalMin: diffCriticalMin,
+            prevWorker: prevWorker
+        };
+    }
+
+    function selectSuggestedWorker() {
+        const sugg = getSuggestedWorker();
+        if (sugg && sugg.worker) {
+            queue = queue.filter(w => w !== sugg.worker);
+            queue.unshift(sugg.worker);
+            saveData();
+        }
+    }
+
+    function renderHistory() {
+        const historyList = document.getElementById('historyList');
+        const filter = document.getElementById('historyFilter').value;
+        historyList.innerHTML = '';
+
+        // ترتيب من الأقدم إلى الأحدث (تصاعدي حسب Timestamp)
+        history.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        const filteredHistory = filter === 'ALL' ? history : history.filter(h => h.worker.includes(filter));
+
+        if (filteredHistory.length === 0) {
+            historyList.innerHTML = '<li style="justify-content:center; color:#6c757d;">Aucun historique enregistré</li>';
+            return;
+        }
+
+        filteredHistory.forEach(item => {
+            const li = document.createElement('li');
+            li.style.flexDirection = 'column';
+            li.style.alignItems = 'flex-start';
+
+            const etablissementBadge = item.hasEtablissement ? '<span class="badge badge-extra" style="margin-left:4px;">🔧 Établissement (+30m)</span>' : '';
+
+            li.innerHTML = `
+                <div style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                    <div>
+                        <strong>👥 ${item.worker}</strong>
+                        <span class="badge badge-type" style="margin-left:4px;">🔍 ${item.type || 'N/A'}</span>
+                        <span class="badge badge-location" style="margin-left:4px;">📍 ${item.location || 'N/A'}</span>
+                        ${etablissementBadge}
+                    </div>
+                    <span class="badge">Durée: ${formatTime(item.durationMin)} (${item.points} pts / pers)</span>
+                </div>
+                <div style="width:100%; display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem;">
+                    <span style="color:#6c757d;">📅 ${item.date}</span>
+                    <span>☀ ${formatTime(item.normalMin)} Normale | 🚨 ${formatTime(item.criticalMin)} Critique</span>
+                </div>
+            `;
+            historyList.appendChild(li);
+        });
+    }
+
+    function updateComparisonChart() {
+        const ctx = document.getElementById('comparisonChart').getContext('2d');
+        const labels = Object.keys(points);
+        const normalHours = labels.map(w => (points[w].normalMin / 60).toFixed(2));
+        const criticalHours = labels.map(w => (points[w].criticalMin / 60).toFixed(2));
+        
+        const equivExtraHours = labels.map(w => {
+            const totalNormalAndCrit = (points[w].normalMin + points[w].criticalMin) / 60;
+            const totalEquiv = getEquivalentNormalMinutes(w) / 60;
+            return Math.max(0, totalEquiv - totalNormalAndCrit).toFixed(2);
+        });
+
+        if (comparisonChartInstance) comparisonChartInstance.destroy();
+
+        comparisonChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { 
+                        label: 'Heures Normales', 
+                        data: normalHours, 
+                        backgroundColor: '#198754'
+                    },
+                    { 
+                        label: 'Heures Critiques (x2)', 
+                        data: criticalHours, 
+                        backgroundColor: '#dc3545'
+                    },
+                    {
+                        label: 'Heures Équitable',
+                        data: equivExtraHours,
+                        backgroundColor: 'rgba(14, 165, 233, 0.25)',
+                        borderColor: 'rgba(14, 165, 233, 0.6)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const workerName = context.label;
+                                if (context.datasetIndex === 2) {
+                                    const totalEquivMinutes = getEquivalentNormalMinutes(workerName);
+                                    return `Heures Équitable: ${formatTime(totalEquivMinutes)}`;
+                                } else {
+                                    const valInHours = context.raw || 0;
+                                    const totalMins = Math.round(valInHours * 60);
+                                    return `${context.dataset.label}: ${formatTime(totalMins)}`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, title: { display: true, text: 'Temps en heures (h)' } }
+                }
+            }
+        });
+    }
+
+    function exportToPDF() {
+        const element = document.getElementById('reportArea');
+        const btn = document.getElementById('pdfBtn');
+        btn.innerText = "⏳ Génération du PDF...";
+
+        const noPrintElems = document.querySelectorAll('.no-print');
+        noPrintElems.forEach(el => el.style.display = 'none');
+
+        const opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     'Rapport_Surveillances.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            noPrintElems.forEach(el => el.style.display = '');
+            btn.innerText = "📄 Télécharger le rapport (PDF)";
+        }).catch(err => {
+            console.error(err);
+            window.print();
+            noPrintElems.forEach(el => el.style.display = '');
+            btn.innerText = "📄 Télécharger le rapport (PDF)";
+        });
+    }
+
+    function renderFireOptions() {
+        const fireA1 = document.getElementById('fireInputAgent1');
+        const fireA2 = document.getElementById('fireInputAgent2');
+        
+        if (!fireA1 || !fireA2) return;
+
+        const curA1 = fireA1.value;
+        const curA2 = fireA2.value;
+
+        fireA1.innerHTML = '';
+        fireA2.innerHTML = '<option value="">-- Seul (1 agent) --</option>';
+
+        const allWorkers = Object.keys(points);
+
+        allWorkers.forEach(w => {
+            const opt1 = document.createElement('option');
+            opt1.value = w;
+            opt1.innerText = w;
+            fireA1.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = w;
+            opt2.innerText = w;
+            fireA2.appendChild(opt2);
+        });
+
+        if (allWorkers.length > 0) fireA1.value = curA1 && allWorkers.includes(curA1) ? curA1 : allWorkers[0];
+        if (curA2 && allWorkers.includes(curA2)) fireA2.value = curA2;
+    }
+
+    function renderFireSection() {
+        renderFireOptions();
+
+        const plannedContainer = document.getElementById('firePlannedList');
+        if (!plannedContainer) return;
+
+        plannedContainer.innerHTML = '';
+
+        if (firePlans.length === 0) {
+            plannedContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem; padding:10px;">Aucune vérification planifiée.</div>';
+        } else {
+            const nowTimeStr = new Date().toTimeString().substring(0, 5);
+            firePlans.forEach(plan => {
+                const card = document.createElement('div');
+                card.className = 'fire-plan-card';
+                
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <strong style="font-size:1.05rem; color:var(--fire-color);">👥 ${plan.team.join(' & ')}</strong>
+                        <span class="badge badge-fire">🧯 ${plan.type}</span>
+                    </div>
+                    <div style="margin-top:6px; font-size:0.85rem; color:#495057;">
+                        📅 Date : <strong>${plan.date}</strong> | ⏱️ Début : <strong>${plan.startTime}</strong>
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:120px;">
+                            <label style="font-size:0.75rem; font-weight:bold;">Heure de fin :</label>
+                            <input type="time" id="fireEndTime_${plan.id}" value="${nowTimeStr}">
+                        </div>
+                        <button class="btn-success btn-sm" style="margin-top:14px; height:36px;" onclick="confirmFirePlan(${plan.id})">OK / Terminer</button>
+                        <button class="btn-danger btn-sm" style="margin-top:14px; height:36px;" onclick="deleteFirePlan(${plan.id})">Supprimer</button>
+                    </div>
+                `;
+                plannedContainer.appendChild(card);
+            });
+        }
+
+        const fireHistoryContainer = document.getElementById('fireHistoryList');
+        if (!fireHistoryContainer) return;
+
+        fireHistoryContainer.innerHTML = '';
+
+        // ترتيب من الأقدم إلى الأحدث (تصاعدي حسب Timestamp)
+        fireHistory.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        if (fireHistory.length === 0) {
+            fireHistoryContainer.innerHTML = '<li style="justify-content:center; color:#6c757d;">Aucun historique de vérification.</li>';
+        } else {
+            fireHistory.forEach(item => {
+                const li = document.createElement('li');
+                li.style.flexDirection = 'column';
+                li.style.alignItems = 'flex-start';
+
+                li.innerHTML = `
+                    <div style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <div>
+                            <strong>👥 ${item.team}</strong>
+                            <span class="badge badge-fire" style="margin-left:4px;">🧯 ${item.type}</span>
+                        </div>
+                        <span class="badge">Durée: ${formatTime(item.durationMin)} (${item.points} pts / pers)</span>
+                    </div>
+                    <div style="width:100%; display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem;">
+                        <span style="color:#6c757d;">📅 ${item.date} (${item.timeRange})</span>
+                        <span>☀ ${formatTime(item.normalMin)} Normale | 🚨 ${formatTime(item.criticalMin)} Critique</span>
+                    </div>
+                `;
+                fireHistoryContainer.appendChild(li);
+            });
+        }
+    }
+
+    function render() {
+        const sugg = getSuggestedWorker();
+        const suggestedElem = document.getElementById('suggestedWorker');
+        const reasonElem = document.getElementById('suggestionReason');
+        if (sugg && suggestedElem) {
+            suggestedElem.innerText = sugg.worker;
+            
+            let delayText = "";
+            if (sugg.prevWorker && sugg.prevWorker !== sugg.worker) {
+                delayText = `<br><span style="color:#d9534f; font-weight:bold;">Écart par rapport au précédent (${sugg.prevWorker}):</span><br>` +
+                            `☀ Normales: <strong>${formatTime(sugg.diffNormalMin)}</strong> | ` +
+                            `🚨 Critiques: <strong>${formatTime(sugg.diffCriticalMin)}</strong>`;
+            } else {
+                delayText = `<br><span style="color:#198754; font-weight:bold;">Aucun retard (Tous les agents sont à égalité)</span>`;
+            }
+
+            reasonElem.innerHTML = `Motif: Agent en fin de classement équitable (Possède le moins de temps total équivalent x2)${delayText}`;
+        }
+
+        const currentWorkerElem = document.getElementById('currentWorker');
+        const timeStatusElem = document.getElementById('timeStatus');
+
+        if (queue.length > 0) currentWorkerElem.innerText = queue[0];
+        else currentWorkerElem.innerText = 'Aucun agent dans la file';
+
+        const nowHour = new Date().getHours();
+        if (isCriticalHour(nowHour)) {
+            timeStatusElem.innerText = '⚠ Statut actuel: Période Critique (Points x2)';
+            timeStatusElem.className = 'status-tag tag-critical';
+        } else {
+            timeStatusElem.innerText = '✅ Statut actuel: Période Normale (x1)';
+            timeStatusElem.className = 'status-tag tag-normal';
+        }
+
+        const activeContainer = document.getElementById('activeSurveillancesList');
+        activeContainer.innerHTML = '';
+
+        if (activeSurveillances.length === 0) {
+            activeContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem;">Aucune surveillance générale en cours.</div>';
+        } else {
+            const nowTimeStr = new Date().toTimeString().substring(0, 5);
+            activeSurveillances.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'active-surveillance-card';
+                const teamDisplay = item.team && item.team.length > 1 ? item.team.join(', ') : item.worker;
+                
+                const endTimeInputHTML = item.hasEtablissement ? '' : `
+                    <div style="flex:1; min-width:120px;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Heure de retour:</label>
+                        <input type="time" id="endTime_${item.id}" value="${nowTimeStr}">
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                        <strong style="font-size:1.1rem; color:var(--danger-color);">👥 ${teamDisplay}</strong>
+                        <div>
+                            <span class="badge badge-type">🔍 ${item.type}</span>
+                            <span class="badge badge-location">📍 ${item.location}</span>
+                            ${item.hasEtablissement ? '<span class="badge badge-extra">🔧 Établissement (+30m)</span>' : ''}
+                        </div>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.85rem; color:#495057;">
+                        ⏱ Heure de départ: <strong>${item.startTime}</strong>
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        ${endTimeInputHTML}
+                        <button class="btn-success btn-sm" style="margin-top:14px; height:36px; flex:1;" onclick="finishIntervention(${item.id})">✅ Enregistrer la fin</button>
+                    </div>
+                `;
+                activeContainer.appendChild(card);
+            });
+        }
+
+        const queueList = document.getElementById('queueList');
+        queueList.innerHTML = '';
+        queue.forEach((worker, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span><strong>#${index + 1}</strong> - ${worker}</span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <div class="move-btns">
+                        <button class="btn-secondary btn-sm" onclick="moveQueue(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4"' : ''}>▲</button>
+                        <button class="btn-secondary btn-sm" onclick="moveQueue(${index}, 1)" ${index === queue.length - 1 ? 'disabled style="opacity:0.4"' : ''}>▼</button>
+                    </div>
+                    <button class="btn-danger btn-sm" onclick="removeWorkerFromQueue('${worker}')">Retirer</button>
+                </div>
+            `;
+            queueList.appendChild(li);
+        });
+
+        renderFireSection();
+
+        const sortedTotalTime = Object.keys(points).sort((a, b) => {
+            const equivA = getEquivalentNormalMinutes(a);
+            const equivB = getEquivalentNormalMinutes(b);
+            return equivB - equivA;
+        });
+        const totalTimeRankList = document.getElementById('totalTimeRankList');
+        totalTimeRankList.innerHTML = '';
+        sortedTotalTime.forEach((worker, index) => {
+            const equivMins = getEquivalentNormalMinutes(worker);
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <span><strong>#${index + 1}</strong> ${worker}</span>
+                <span class="badge badge-total">⚖ Équivalent: ${formatTime(equivMins)}</span>
+            `;
+            totalTimeRankList.appendChild(li);
+        });
+
+        const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin - points[a].criticalMin);
         const criticalRankList = document.getElementById('criticalRankList');
         criticalRankList.innerHTML = '';
         sortedCritical.forEach((worker, index) => {
             const li = document.createElement('li');
-            li.innerHTML = 
+            li.innerHTML = `
                 <span><strong>#${index + 1}</strong> ${worker}</span>
                 <span class="badge badge-critical">🚨 ${formatTime(points[worker].criticalMin)}</span>
-            ;
+            `;
             criticalRankList.appendChild(li);
         });
 
@@ -15,10 +1339,10 @@ const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin 
         normalRankList.innerHTML = '';
         sortedNormal.forEach((worker, index) => {
             const li = document.createElement('li');
-            li.innerHTML = 
+            li.innerHTML = `
                 <span><strong>#${index + 1}</strong> ${worker}</span>
                 <span class="badge badge-normal">☀ ${formatTime(points[worker].normalMin)}</span>
-            ;
+            `;
             normalRankList.appendChild(li);
         });
 
@@ -34,7 +1358,7 @@ const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin 
             const equivMinutes = getEquivalentNormalMinutes(worker);
 
             const li = document.createElement('li');
-            li.innerHTML = 
+            li.innerHTML = `
                 <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <span class="rank-badge">${index + 1}</span>
@@ -52,12 +1376,12 @@ const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin 
                     <span>☀ Normal: ${formatTime(data.normalMin)}</span>
                     <span>🚨 Critique: ${formatTime(data.criticalMin)}</span>
                 </div>
-            ;
+            `;
             statsList.appendChild(li);
 
             const opt = document.createElement('option');
             opt.value = worker;
-            opt.innerText = Historique: ${worker};
+            opt.innerText = `Historique: ${worker}`;
             historyFilter.appendChild(opt);
         });
 
