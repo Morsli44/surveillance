@@ -345,7 +345,7 @@
         <h4 style="color: #00695c; margin-bottom: 2px;">💡 Agent recommandé pour la prochaine surveillance</h4>
         <div class="suggested-name" id="suggestedWorker">Calcul en cours...</div>
         <div id="suggestionReason" style="font-size: 0.85rem; color: #555;"></div>
-        <button class="btn-sm btn-success" style="margin-top: 8px;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
+        <button id="btnSelectSuggested" class="btn-sm btn-success" style="margin-top: 8px;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
     </div>
 
     <!-- Agent de garde / Lancement de surveillance générale -->
@@ -939,6 +939,17 @@
         const workers = Object.keys(points);
         if (workers.length === 0) return null;
 
+        // التحقق مما إذا كان جميع الأعضاء متساويين تماماً (في بداية الدورة)
+        const firstEquiv = getEquivalentNormalMinutes(workers[0]);
+        const allEqual = workers.every(w => getEquivalentNormalMinutes(w) === firstEquiv);
+
+        if (allEqual) {
+            return {
+                isEqual: true,
+                worker: null
+            };
+        }
+
         let sortedByEquivDesc = [...workers].sort((a, b) => {
             const equivA = getEquivalentNormalMinutes(a);
             const equivB = getEquivalentNormalMinutes(b);
@@ -950,21 +961,9 @@
 
         const bestWorker = sortedByEquivDesc[sortedByEquivDesc.length - 1];
 
-        let prevWorker = null;
-        let diffNormalMin = 0;
-        let diffCriticalMin = 0;
-
-        if (sortedByEquivDesc.length > 1) {
-            prevWorker = sortedByEquivDesc[sortedByEquivDesc.length - 2];
-            diffNormalMin = Math.max(0, points[prevWorker].normalMin - points[bestWorker].normalMin);
-            diffCriticalMin = Math.max(0, points[prevWorker].criticalMin - points[bestWorker].criticalMin);
-        }
-
         return { 
-            worker: bestWorker, 
-            diffNormalMin: diffNormalMin,
-            diffCriticalMin: diffCriticalMin,
-            prevWorker: prevWorker
+            isEqual: false,
+            worker: bestWorker
         };
     }
 
@@ -1216,19 +1215,22 @@
         const sugg = getSuggestedWorker();
         const suggestedElem = document.getElementById('suggestedWorker');
         const reasonElem = document.getElementById('suggestionReason');
-        if (sugg && suggestedElem) {
-            suggestedElem.innerText = sugg.worker;
-            
-            let delayText = "";
-            if (sugg.prevWorker && sugg.prevWorker !== sugg.worker) {
-                delayText = `<br><span style="color:#d9534f; font-weight:bold;">Écart par rapport au précédent (${sugg.prevWorker}):</span><br>` +
-                            `☀ Normales: <strong>${formatTime(sugg.diffNormalMin)}</strong> | ` +
-                            `🚨 Critiques: <strong>${formatTime(sugg.diffCriticalMin)}</strong>`;
-            } else {
-                delayText = `<br><span style="color:#198754; font-weight:bold;">Aucun retard (Tous les agents sont à égalité)</span>`;
-            }
+        const btnSelect = document.getElementById('btnSelectSuggested');
 
-            reasonElem.innerHTML = `Motif: Agent en fin de classement équitable (Possède le moins de temps total équivalent x2)${delayText}`;
+        if (sugg && suggestedElem) {
+            if (sugg.isEqual) {
+                suggestedElem.innerText = "Aucune suggestion";
+                suggestedElem.style.fontSize = "1.2rem";
+                suggestedElem.style.color = "#6c757d";
+                reasonElem.innerHTML = "Tous les agents sont à égalité (début du tour).";
+                if (btnSelect) btnSelect.style.display = "none";
+            } else {
+                suggestedElem.innerText = sugg.worker;
+                suggestedElem.style.fontSize = "1.5rem";
+                suggestedElem.style.color = "#00796b";
+                reasonElem.innerHTML = "Motif: Agent en fin de classement équitable (Possède le moins de temps total équivalent x2)";
+                if (btnSelect) btnSelect.style.display = "inline-block";
+            }
         }
 
         const currentWorkerElem = document.getElementById('currentWorker');
