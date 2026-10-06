@@ -80,6 +80,7 @@
             background-color: #e0f7fa;
             border: 2px dashed #00acc1;
             text-align: center;
+            transition: all 0.3s ease;
         }
 
         .worker-name {
@@ -215,7 +216,7 @@
             gap: 5px;
         }
 
-        /* ستايل خاص بالسحب والإفلات */
+        /* Drag and Drop Styling */
         .draggable-item {
             cursor: grab;
             transition: background-color 0.2s, opacity 0.2s;
@@ -365,11 +366,11 @@
     </div>
 
     <!-- Recommandation de la prochaine garde -->
-    <div class="card suggestion-card no-print">
-        <h4 style="color: #00695c; margin-bottom: 2px;">💡 Agent recommandé pour la prochaine surveillance</h4>
+    <div class="card suggestion-card no-print" id="suggestionCard">
+        <h4 style="color: #00695c; margin-bottom: 2px;" id="suggestionTitle">💡 Agent recommandé pour la prochaine surveillance</h4>
         <div class="suggested-name" id="suggestedWorker">Calcul en cours...</div>
         <div id="suggestionReason" style="font-size: 0.85rem; color: #555;"></div>
-        <button id="btnSelectSuggested" class="btn-sm btn-success" style="margin-top: 8px;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
+        <button id="btnSelectSuggested" class="btn-sm btn-success" style="margin-top: 8px; display:none;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
     </div>
 
     <!-- Agent de garde / Lancement de surveillance générale -->
@@ -960,15 +961,28 @@
         }
     }
 
+    // تعديل دالة الاقتراحات للتحقق من إكمال جميع الأعضاء للمناوبة الأولى أولاً
     function getSuggestedWorker() {
         const workers = Object.keys(points);
         if (workers.length === 0) return null;
+
+        // التحقق مما إذا كان هناك أي عضو لم يخرج في أي مناوبة بعد (مجموع الساعات = 0)
+        const hasUnusedWorkers = workers.some(w => getEquivalentNormalMinutes(w) === 0);
+
+        if (hasUnusedWorkers) {
+            return {
+                isFirstRoundFinished: false,
+                isEqual: false,
+                worker: null
+            };
+        }
 
         const firstEquiv = getEquivalentNormalMinutes(workers[0]);
         const allEqual = workers.every(w => getEquivalentNormalMinutes(w) === firstEquiv);
 
         if (allEqual) {
             return {
+                isFirstRoundFinished: true,
                 isEqual: true,
                 worker: null
             };
@@ -986,6 +1000,7 @@
         const bestWorker = sortedByEquivDesc[sortedByEquivDesc.length - 1];
 
         return { 
+            isFirstRoundFinished: true,
             isEqual: false,
             worker: bestWorker
         };
@@ -993,7 +1008,7 @@
 
     function selectSuggestedWorker() {
         const sugg = getSuggestedWorker();
-        if (sugg && sugg.worker) {
+        if (sugg && sugg.isFirstRoundFinished && sugg.worker) {
             queue = queue.filter(w => w !== sugg.worker);
             queue.unshift(sugg.worker);
             saveData();
@@ -1233,7 +1248,6 @@
         }
     }
 
-    /* دالة تجهيز حدث السحب والإفلات */
     function handleDragAndDrop(li, index) {
         li.addEventListener('dragstart', (e) => {
             draggedIndex = index;
@@ -1266,15 +1280,28 @@
         const suggestedElem = document.getElementById('suggestedWorker');
         const reasonElem = document.getElementById('suggestionReason');
         const btnSelect = document.getElementById('btnSelectSuggested');
+        const cardElem = document.getElementById('suggestionCard');
 
         if (sugg && suggestedElem) {
-            if (sugg.isEqual) {
+            if (!sugg.isFirstRoundFinished) {
+                cardElem.style.backgroundColor = "#f8f9fa";
+                cardElem.style.borderColor = "#adb5bd";
+                suggestedElem.innerText = "Pas de suggestion actuelle";
+                suggestedElem.style.fontSize = "1.2rem";
+                suggestedElem.style.color = "#6c757d";
+                reasonElem.innerHTML = "🔒 <strong>En attente :</strong> Tous les agents doivent effectuer au moins 1 surveillance avant d'activer les suggestions.";
+                if (btnSelect) btnSelect.style.display = "none";
+            } else if (sugg.isEqual) {
+                cardElem.style.backgroundColor = "#e0f7fa";
+                cardElem.style.borderColor = "#00acc1";
                 suggestedElem.innerText = "Aucune suggestion";
                 suggestedElem.style.fontSize = "1.2rem";
                 suggestedElem.style.color = "#6c757d";
-                reasonElem.innerHTML = "Tous les agents sont à égalité (début du tour).";
+                reasonElem.innerHTML = "Tous les agents sont à égalité.";
                 if (btnSelect) btnSelect.style.display = "none";
             } else {
+                cardElem.style.backgroundColor = "#e0f7fa";
+                cardElem.style.borderColor = "#00acc1";
                 suggestedElem.innerText = sugg.worker;
                 suggestedElem.style.fontSize = "1.5rem";
                 suggestedElem.style.color = "#00796b";
@@ -1338,7 +1365,6 @@
             });
         }
 
-        /* عرض قائمة الانتظار مع السحب والإفلات */
         const queueList = document.getElementById('queueList');
         queueList.innerHTML = '';
         queue.forEach((worker, index) => {
