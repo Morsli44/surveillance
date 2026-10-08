@@ -162,13 +162,14 @@
 
         .workers-checkbox-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             gap: 6px;
         }
 
         .worker-chip {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 5px;
             background: #fff;
             padding: 4px 8px;
@@ -375,8 +376,14 @@
 
     <!-- Agent de garde / Lancement de surveillance générale -->
     <div class="card current-turn no-print">
-        <h4>Responsable actuel de la surveillance</h4>
-        <div class="worker-name" id="currentWorker">Aucun agent</div>
+        <h4>Lancement d'une surveillance</h4>
+        
+        <!-- اختيار العامل المتاح للمراقبة العادية -->
+        <div id="singleWorkerSelectionContainer" style="margin-bottom: 10px;">
+            <label style="font-size: 0.85rem; font-weight: bold; color: #0d6efd; display: block; margin-bottom: 4px;">Sélectionner l'agent disponible :</label>
+            <select id="singleWorkerSelect" style="font-size: 1.1rem; font-weight: bold; color: #d32f2f; text-align: center; border: 2px solid #0d6efd;"></select>
+        </div>
+
         <div id="timeStatus" class="status-tag"></div>
 
         <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
@@ -428,7 +435,7 @@
             </div>
 
             <div id="teamContainer" class="team-selection-box">
-                <h5>👥 Sélectionner les agents participants (Travail d'équipe) :</h5>
+                <h5>👥 Sélectionner l'équipe disponible (Triés par le moins de participations/7j) :</h5>
                 <div class="workers-checkbox-grid" id="teamCheckboxes"></div>
             </div>
 
@@ -624,23 +631,98 @@
         return w.normalMin + (w.criticalMin * 2);
     }
 
+    // دالة جلب العمال المشغولين حالياً في أي نشاط
+    function getBusyWorkers() {
+        let busy = new Set();
+        
+        // عمال المراقبة النشطة
+        activeSurveillances.forEach(item => {
+            if (item.team && item.team.length > 0) {
+                item.team.forEach(w => busy.add(w));
+            } else if (item.worker) {
+                busy.add(item.worker);
+            }
+        });
+
+        // عمال تدقيق المطافئ والشبكة
+        firePlans.forEach(plan => {
+            if (plan.team && plan.team.length > 0) {
+                plan.team.forEach(w => busy.add(w));
+            }
+        });
+
+        return busy;
+    }
+
+    // دالة لحساب عدد مرات القيام بـ Établissement خلال آخر 7 أيام
+    function getEtablissementCountLast7Days(worker) {
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        let count = 0;
+
+        history.forEach(item => {
+            if (item.hasEtablissement && (item.timestamp || 0) >= sevenDaysAgo) {
+                if (item.worker && item.worker.includes(worker)) {
+                    count++;
+                }
+            }
+        });
+
+        return count;
+    }
+
+    // تحديث خيارات اختيار العامل الفردي للمراقبة العادية (إظهار المتاحين فقط حسب ترتيب الـ queue)
+    function renderSingleWorkerSelect() {
+        const select = document.getElementById('singleWorkerSelect');
+        if (!select) return;
+
+        const busyWorkers = getBusyWorkers();
+        const currentSelected = select.value;
+        select.innerHTML = '';
+
+        // ترتيب حسب الدور في queue مع استبعاد المشغولين
+        const availableWorkers = queue.filter(w => !busyWorkers.has(w));
+
+        if (availableWorkers.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = "";
+            opt.innerText = "-- Aucun agent disponible --";
+            select.appendChild(opt);
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+            availableWorkers.forEach(w => {
+                const opt = document.createElement('option');
+                opt.value = w;
+                opt.innerText = w;
+                select.appendChild(opt);
+            });
+            if (currentSelected && availableWorkers.includes(currentSelected)) {
+                select.value = currentSelected;
+            }
+        }
+    }
+
     function toggleEtablissementMode() {
         const isChecked = document.getElementById('etablissementCheck').checked;
         const typeSelect = document.getElementById('surveillanceType');
         const typeContainer = document.getElementById('surveillanceTypeContainer');
         const teamContainer = document.getElementById('teamContainer');
+        const singleWorkerContainer = document.getElementById('singleWorkerSelectionContainer');
         const startBtn = document.getElementById('startBtn');
 
         if (isChecked) {
             typeContainer.style.opacity = '0.4';
             typeSelect.disabled = true;
+            singleWorkerContainer.style.display = 'none';
             teamContainer.style.display = 'block';
             renderTeamCheckboxes();
             if (startBtn) startBtn.innerHTML = '🛠️ Mise en place d\'un établissement';
         } else {
             typeContainer.style.opacity = '1';
             typeSelect.disabled = false;
+            singleWorkerContainer.style.display = 'block';
             teamContainer.style.display = 'none';
+            renderSingleWorkerSelect();
             if (startBtn) startBtn.innerHTML = '🚀 Démarrer la surveillance';
         }
     }
@@ -649,15 +731,33 @@
         const teamBox = document.getElementById('teamCheckboxes');
         teamBox.innerHTML = '';
         
-        const mainWorker = queue[0];
-        const otherWorkers = Object.keys(points).filter(w => w !== mainWorker);
+        const busyWorkers = getBusyWorkers();
 
-        otherWorkers.forEach(worker => {
+        // تصفية الأعضاء المتفرغين فقط
+        let availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
+
+        if (availableWorkers.length === 0) {
+            teamBox.innerHTML = '<div style="font-size:0.85rem; color:#dc3545; font-weight:bold;">Aucun agent disponible (Tous les agents sont occupés).</div>';
+            return;
+        }
+
+        // ترتيب العمال المتاحين حسب الأقل مشاركة في Établissement في آخر 7 أيام
+        availableWorkers.sort((a, b) => {
+            const countA = getEtablissementCountLast7Days(a);
+            const countB = getEtablissementCountLast7Days(b);
+            return countA - countB;
+        });
+
+        availableWorkers.forEach(worker => {
+            const count7Days = getEtablissementCountLast7Days(worker);
             const label = document.createElement('label');
             label.className = 'worker-chip';
             label.innerHTML = `
-                <input type="checkbox" class="team-member-checkbox" value="${worker}">
-                <span>${worker}</span>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <input type="checkbox" class="team-member-checkbox" value="${worker}">
+                    <span><strong>${worker}</strong></span>
+                </div>
+                <span class="badge" style="font-size:0.7rem; background-color:#e1bee7; color:#4a148c;" title="Nombre d'établissements ces 7 derniers jours">${count7Days} Étab. / 7j</span>
             `;
             teamBox.appendChild(label);
         });
@@ -721,11 +821,6 @@
     }
 
     function startIntervention() {
-        if (queue.length === 0) {
-            alert('Aucun agent disponible dans la file.');
-            return;
-        }
-
         const startVal = document.getElementById('startTime').value;
         const hasEtablissement = document.getElementById('etablissementCheck').checked;
         const typeVal = hasEtablissement ? 'Établissement' : document.getElementById('surveillanceType').value;
@@ -736,19 +831,30 @@
             return;
         }
 
-        const mainWorker = queue.shift();
-        let team = [mainWorker];
+        let team = [];
 
         if (hasEtablissement) {
             const checkedBoxes = document.querySelectorAll('.team-member-checkbox:checked');
             checkedBoxes.forEach(cb => {
                 team.push(cb.value);
             });
+
+            if (team.length === 0) {
+                alert('Veuillez sélectionner au moins un agent pour l\'établissement.');
+                return;
+            }
+        } else {
+            const selectedWorker = document.getElementById('singleWorkerSelect').value;
+            if (!selectedWorker) {
+                alert('Aucun agent disponible pour cette surveillance.');
+                return;
+            }
+            team.push(selectedWorker);
         }
 
         const activeItem = {
             id: Date.now(),
-            worker: mainWorker,
+            worker: team[0],
             team: team,
             type: typeVal,
             location: locationVal,
@@ -758,7 +864,12 @@
         };
 
         activeSurveillances.push(activeItem);
-        queue.push(mainWorker);
+
+        // إعادة ترتيب قائمة الـ queue ونقل العمال المحددين إلى النهاية
+        team.forEach(w => {
+            queue = queue.filter(qWorker => qWorker !== w);
+            queue.push(w);
+        });
         
         document.getElementById('etablissementCheck').checked = false;
         toggleEtablissementMode();
@@ -775,7 +886,7 @@
         const startVal = document.getElementById('fireInputStartTime').value;
 
         if (!a1) {
-            alert('Veuillez choisir au moins le premier agent.');
+            alert('Veuillez choisir au moins le premier agent disponible.');
             return;
         }
         if (a1 === a2) {
@@ -961,12 +1072,10 @@
         }
     }
 
-    // تعديل دالة الاقتراحات للتحقق من إكمال جميع الأعضاء للمناوبة الأولى أولاً
     function getSuggestedWorker() {
         const workers = Object.keys(points);
         if (workers.length === 0) return null;
 
-        // التحقق مما إذا كان هناك أي عضو لم يخرج في أي مناوبة بعد (مجموع الساعات = 0)
         const hasUnusedWorkers = workers.some(w => getEquivalentNormalMinutes(w) === 0);
 
         if (hasUnusedWorkers) {
@@ -1160,9 +1269,23 @@
         fireA1.innerHTML = '';
         fireA2.innerHTML = '<option value="">-- Seul (1 agent) --</option>';
 
-        const allWorkers = Object.keys(points);
+        const busyWorkers = getBusyWorkers();
+        const availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
 
-        allWorkers.forEach(w => {
+        if (availableWorkers.length === 0) {
+            const opt1 = document.createElement('option');
+            opt1.value = "";
+            opt1.innerText = "-- Aucun agent disponible --";
+            fireA1.appendChild(opt1);
+            fireA1.disabled = true;
+            fireA2.disabled = true;
+            return;
+        }
+
+        fireA1.disabled = false;
+        fireA2.disabled = false;
+
+        availableWorkers.forEach(w => {
             const opt1 = document.createElement('option');
             opt1.value = w;
             opt1.innerText = w;
@@ -1174,8 +1297,8 @@
             fireA2.appendChild(opt2);
         });
 
-        if (allWorkers.length > 0) fireA1.value = curA1 && allWorkers.includes(curA1) ? curA1 : allWorkers[0];
-        if (curA2 && allWorkers.includes(curA2)) fireA2.value = curA2;
+        if (curA1 && availableWorkers.includes(curA1)) fireA1.value = curA1;
+        if (curA2 && availableWorkers.includes(curA2)) fireA2.value = curA2;
     }
 
     function renderFireSection() {
@@ -1310,12 +1433,7 @@
             }
         }
 
-        const currentWorkerElem = document.getElementById('currentWorker');
         const timeStatusElem = document.getElementById('timeStatus');
-
-        if (queue.length > 0) currentWorkerElem.innerText = queue[0];
-        else currentWorkerElem.innerText = 'Aucun agent dans la file';
-
         const nowHour = new Date().getHours();
         if (isCriticalHour(nowHour)) {
             timeStatusElem.innerText = '⚠ Statut actuel: Période Critique (Points x2)';
@@ -1363,6 +1481,13 @@
                 `;
                 activeContainer.appendChild(card);
             });
+        }
+
+        // تحديث خيارات اختيار العامل الفردي والمجموعة
+        if (document.getElementById('etablissementCheck').checked) {
+            renderTeamCheckboxes();
+        } else {
+            renderSingleWorkerSelect();
         }
 
         const queueList = document.getElementById('queueList');
