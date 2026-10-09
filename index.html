@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Système de Gestion des surveillances</title>
+    <title>Système de Gestion du Travail EQUIPE A</title>
     <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- html2pdf Library -->
@@ -20,6 +20,7 @@
             --text-color: #212529;
             --border-color: #dee2e6;
             --fire-color: #d32f2f;
+            --vhf-color: #6f42c1;
         }
 
         body {
@@ -54,6 +55,11 @@
             background-color: #fff5f5;
         }
 
+        .card-vhf {
+            border: 2px solid var(--vhf-color);
+            background-color: #f8f0fc;
+        }
+
         .current-turn {
             background-color: #e7f1ff;
             border: 2px solid var(--primary-color);
@@ -66,6 +72,23 @@
             margin-bottom: 10px;
             padding: 12px;
             border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .etablissement-card {
+            background-color: rgba(224, 247, 250, 0.6) !important;
+            border: 2px solid #00acc1 !important;
+        }
+
+        .card-alarm-active {
+            background-color: #ffe6e6 !important;
+            border: 2px solid var(--danger-color) !important;
+            animation: pulse-border 1s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            from { box-shadow: 0 0 4px var(--danger-color); }
+            to { box-shadow: 0 0 16px var(--danger-color); }
         }
 
         .fire-plan-card {
@@ -81,13 +104,6 @@
             border: 2px dashed #00acc1;
             text-align: center;
             transition: all 0.3s ease;
-        }
-
-        .worker-name {
-            font-size: 1.6rem;
-            font-weight: bold;
-            color: var(--danger-color);
-            margin: 8px 0;
         }
 
         .suggested-name {
@@ -193,10 +209,11 @@
         .btn-warning { background-color: var(--warning-color); }
         .btn-danger { background-color: var(--danger-color); }
         .btn-fire { background-color: var(--fire-color); }
+        .btn-vhf { background-color: var(--vhf-color); }
         .btn-secondary { background-color: #6c757d; }
         .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
 
-        #fireModuleSection {
+        #fireModuleSection, #vhfModuleSection {
             display: none;
             margin-top: 10px;
         }
@@ -217,7 +234,6 @@
             gap: 5px;
         }
 
-        /* Drag and Drop Styling */
         .draggable-item {
             cursor: grab;
             transition: background-color 0.2s, opacity 0.2s;
@@ -273,6 +289,12 @@
             border: 1px solid #ffcdd2;
         }
 
+        .badge-vhf {
+            background-color: #f3e5f5;
+            color: var(--vhf-color);
+            border: 1px solid #d1c4e9;
+        }
+
         .badge-critical {
             background-color: #ffe6e6;
             color: var(--danger-color);
@@ -314,6 +336,30 @@
         .tag-critical { background-color: #ffe6e6; color: var(--danger-color); }
         .tag-normal { background-color: #e6ffed; color: var(--success-color); }
 
+        .timer-badge {
+            font-size: 0.85rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #e0f2fe;
+            color: #0284c7;
+            border: 1px solid #38bdf8;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .timer-expired {
+            background-color: #fee2e2 !important;
+            color: #dc2626 !important;
+            border: 1px solid #f87171 !important;
+            animation: blink 0.8s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.5; }
+        }
+
         .move-btns {
             display: flex;
             gap: 2px;
@@ -322,7 +368,7 @@
         .canvas-container {
             position: relative;
             width: 100%;
-            height: 420px;
+            height: 440px;
             margin-top: 10px;
         }
 
@@ -350,7 +396,7 @@
 <body>
 
 <div class="container" id="reportArea">
-    <h2>Système de Gestion des surveillances EQUIPE A</h2>
+    <h2>Système de Gestion du Travail EQUIPE A</h2>
 
     <!-- Bouton Télécharger PDF -->
     <div style="margin-bottom: 15px; text-align: right;" class="no-print">
@@ -378,7 +424,6 @@
     <div class="card current-turn no-print">
         <h4>Lancement d'une surveillance</h4>
         
-        <!-- اختيار العامل المتاح للمراقبة العادية -->
         <div id="singleWorkerSelectionContainer" style="margin-bottom: 10px;">
             <label style="font-size: 0.85rem; font-weight: bold; color: #0d6efd; display: block; margin-bottom: 4px;">Sélectionner l'agent disponible :</label>
             <select id="singleWorkerSelect" style="font-size: 1.1rem; font-weight: bold; color: #d32f2f; text-align: center; border: 2px solid #0d6efd;"></select>
@@ -432,6 +477,11 @@
                     <label>Heure de départ:</label>
                     <input type="time" id="startTime">
                 </div>
+                <!-- خانة تحديد وقت التنبيه -->
+                <div class="input-field">
+                    <label>🔔 Minuterie d'alarme (Minutes) :</label>
+                    <input type="number" id="alarmDurationInput" min="1" placeholder="Ex: 30 min (Optionnel)">
+                </div>
             </div>
 
             <div id="teamContainer" class="team-selection-box">
@@ -443,13 +493,17 @@
         </div>
     </div>
 
-    <!-- MODULE : Vérification Réseau & Extincteurs -->
-    <div style="margin-bottom: 15px;" class="no-print">
-        <button class="btn-fire" style="width: 100%; padding: 12px; font-size: 1rem; box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);" onclick="toggleFireModule()">
-            🧯 Afficher / Masquer Vérification Réseau & Extincteurs
+    <!-- MODULES SPECIAUX (BOUTONS D'AFFICHAGE) -->
+    <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;" class="no-print">
+        <button class="btn-fire" style="flex: 1; min-width: 220px; padding: 12px; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);" onclick="toggleFireModule()">
+            🧯 Vérification Réseau & Extincteurs
+        </button>
+        <button class="btn-vhf" id="vhfModuleBtn" style="flex: 1; min-width: 220px; padding: 12px; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(111, 66, 193, 0.2);" onclick="toggleVhfModule()">
+            📻 Radios VHF (Talkie-Walkie)
         </button>
     </div>
 
+    <!-- MODULE 1 : Vérification Réseau & Extincteurs -->
     <div id="fireModuleSection" class="no-print">
         <div class="card card-fire">
             <h4 style="color: var(--fire-color); margin-bottom: 5px;">🧯 Planification : Vérification Réseau & Extincteurs</h4>
@@ -471,9 +525,9 @@
                 <div class="input-field">
                     <label>Type de vérification :</label>
                     <select id="fireInputType">
-                        <option value="Réseau d'eau">Réseau d'eau (شبكة الماء)</option>
-                        <option value="Extincteurs">Extincteurs (المطفآت)</option>
-                        <option value="Réseau d'eau + Extincteurs">Réseau d'eau + Extincteurs</option>
+                        <option value="Réseau incendie">Réseau incendie</option>
+                        <option value="Extincteurs">Extincteurs</option>
+                        <option value="Réseau incendie + Extincteurs">Réseau + Extincteurs</option>
                     </select>
                 </div>
                 <div class="input-field">
@@ -498,14 +552,50 @@
         </div>
 
         <div class="card" style="border-top: 4px solid var(--fire-color);">
-            <h4 style="color: var(--fire-color);">📜 Historique des Vérifications Incendie</h4>
+            <h4 style="color: var(--fire-color);">📜 Historique des Vérifications</h4>
             <ul id="fireHistoryList"></ul>
+        </div>
+    </div>
+
+    <!-- MODULE 2 : Gestion des Radios VHF (Talkie-Walkie) -->
+    <div id="vhfModuleSection" class="no-print">
+        <div class="card card-vhf">
+            <h4 style="color: var(--vhf-color); margin-bottom: 5px;">📻 Gestion des Radios VHF (Talkie-Walkie)</h4>
+            
+            <div class="input-group" style="margin-top: 10px;">
+                <div class="input-field">
+                    <label>Nombre total d'appareils VHF possédés :</label>
+                    <input type="number" id="vhfTotalCountInput" min="1" value="5" onchange="updateVhfTotal(this.value)">
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px dashed #ce93d8; margin: 12px 0;">
+
+            <div style="font-weight: bold; color: var(--vhf-color); margin-bottom: 8px;">➕ Affecter un VHF à un agent :</div>
+
+            <div class="input-group">
+                <div class="input-field">
+                    <label>Agent :</label>
+                    <select id="vhfAgentSelect"></select>
+                </div>
+                <div class="input-field">
+                    <label>Zone / Lieu :</label>
+                    <input type="text" id="vhfZoneInput" placeholder="Ex: Unité MeOH">
+                </div>
+            </div>
+
+            <button class="btn-vhf" style="width: 100%; margin-top: 8px;" onclick="assignVhf()">📻 Remettre un VHF</button>
+        </div>
+
+        <div class="card" style="border-left: 5px solid var(--vhf-color);">
+            <h4 style="color: var(--vhf-color);">📻 Radios VHF actuellement attribuées</h4>
+            <div id="vhfActiveList"></div>
         </div>
     </div>
 
     <!-- Surveillances En Cours -->
     <div class="card no-print" style="border: 2px solid var(--warning-color);">
-        <h4 style="color: var(--warning-color);">⏳ Surveillances générales en cours</h4>
+        <h4 style="color: var(--warning-color);">⏳ Surveillances et Etablissements en cours</h4>
         <div id="activeSurveillancesList"></div>
     </div>
 
@@ -577,8 +667,14 @@
     let firePlans = JSON.parse(localStorage.getItem('shift_fire_plans_v25')) || [];
     let fireHistory = JSON.parse(localStorage.getItem('shift_fire_history_v25')) || [];
 
+    // بيانات VHF الجديدة
+    let vhfTotalCount = parseInt(localStorage.getItem('shift_vhf_total_v25')) || 5;
+    let vhfAssignments = JSON.parse(localStorage.getItem('shift_vhf_assignments_v25')) || [];
+
     let comparisonChartInstance = null;
     let draggedIndex = null;
+    let timerInterval = null;
+    let activeAudioContext = null;
 
     function saveData() {
         localStorage.setItem('shift_queue_v25', JSON.stringify(queue));
@@ -587,15 +683,26 @@
         localStorage.setItem('shift_history_v25', JSON.stringify(history));
         localStorage.setItem('shift_fire_plans_v25', JSON.stringify(firePlans));
         localStorage.setItem('shift_fire_history_v25', JSON.stringify(fireHistory));
+        localStorage.setItem('shift_vhf_total_v25', vhfTotalCount);
+        localStorage.setItem('shift_vhf_assignments_v25', JSON.stringify(vhfAssignments));
         render();
     }
 
     function toggleFireModule() {
         const fireModule = document.getElementById('fireModuleSection');
-        if (fireModule.style.display === 'none' || fireModule.style.display === '') {
-            fireModule.style.display = 'block';
-        } else {
-            fireModule.style.display = 'none';
+        fireModule.style.display = (fireModule.style.display === 'none' || fireModule.style.display === '') ? 'block' : 'none';
+    }
+
+    function toggleVhfModule() {
+        const vhfModule = document.getElementById('vhfModuleSection');
+        vhfModule.style.display = (vhfModule.style.display === 'none' || vhfModule.style.display === '') ? 'block' : 'none';
+    }
+
+    function updateVhfTotal(newVal) {
+        const val = parseInt(newVal);
+        if (val && val >= 1) {
+            vhfTotalCount = val;
+            saveData();
         }
     }
 
@@ -631,30 +738,29 @@
         return w.normalMin + (w.criticalMin * 2);
     }
 
-    // دالة جلب العمال المشغولين حالياً في أي نشاط
-    function getBusyWorkers() {
+    function getCurrentlyBusyWorkers() {
         let busy = new Set();
-        
-        // عمال المراقبة النشطة
+        const now = new Date();
+
         activeSurveillances.forEach(item => {
-            if (item.team && item.team.length > 0) {
-                item.team.forEach(w => busy.add(w));
-            } else if (item.worker) {
-                busy.add(item.worker);
-            }
+            const workersList = item.team && item.team.length > 0 ? item.team : [item.worker];
+            workersList.forEach(w => busy.add(w));
         });
 
-        // عمال تدقيق المطافئ والشبكة
         firePlans.forEach(plan => {
-            if (plan.team && plan.team.length > 0) {
-                plan.team.forEach(w => busy.add(w));
+            if (plan.date && plan.startTime) {
+                const planStart = new Date(`${plan.date}T${plan.startTime}`);
+                if (now >= planStart) {
+                    if (plan.team && plan.team.length > 0) {
+                        plan.team.forEach(w => busy.add(w));
+                    }
+                }
             }
         });
 
         return busy;
     }
 
-    // دالة لحساب عدد مرات القيام بـ Établissement خلال آخر 7 أيام
     function getEtablissementCountLast7Days(worker) {
         const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
         let count = 0;
@@ -670,22 +776,20 @@
         return count;
     }
 
-    // تحديث خيارات اختيار العامل الفردي للمراقبة العادية (إظهار المتاحين فقط حسب ترتيب الـ queue)
     function renderSingleWorkerSelect() {
         const select = document.getElementById('singleWorkerSelect');
         if (!select) return;
 
-        const busyWorkers = getBusyWorkers();
+        const busyWorkers = getCurrentlyBusyWorkers();
         const currentSelected = select.value;
         select.innerHTML = '';
 
-        // ترتيب حسب الدور في queue مع استبعاد المشغولين
         const availableWorkers = queue.filter(w => !busyWorkers.has(w));
 
         if (availableWorkers.length === 0) {
             const opt = document.createElement('option');
             opt.value = "";
-            opt.innerText = "-- Aucun agent disponible --";
+            opt.innerText = "-- Aucun agent disponible actuellement --";
             select.appendChild(opt);
             select.disabled = true;
         } else {
@@ -731,9 +835,8 @@
         const teamBox = document.getElementById('teamCheckboxes');
         teamBox.innerHTML = '';
         
-        const busyWorkers = getBusyWorkers();
+        const busyWorkers = getCurrentlyBusyWorkers();
 
-        // تصفية الأعضاء المتفرغين فقط
         let availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
 
         if (availableWorkers.length === 0) {
@@ -741,7 +844,6 @@
             return;
         }
 
-        // ترتيب العمال المتاحين حسب الأقل مشاركة في Établissement في آخر 7 أيام
         availableWorkers.sort((a, b) => {
             const countA = getEtablissementCountLast7Days(a);
             const countB = getEtablissementCountLast7Days(b);
@@ -820,11 +922,39 @@
         }
     }
 
+    // تشغيل التنبيه الصوتي بواسطة Web Audio API (بدون ملف خارجي)
+    function playBeepSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // نغمة مرتفعة تنبيهية
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch(e) {
+            console.error("Audio Play Error: ", e);
+        }
+    }
+
     function startIntervention() {
         const startVal = document.getElementById('startTime').value;
         const hasEtablissement = document.getElementById('etablissementCheck').checked;
         const typeVal = hasEtablissement ? 'Établissement' : document.getElementById('surveillanceType').value;
         const locationVal = document.getElementById('surveillanceLocation').value;
+        const alarmMins = parseInt(document.getElementById('alarmDurationInput').value) || 0;
 
         if (!startVal) {
             alert('Veuillez sélectionner l\'heure de départ.');
@@ -852,30 +982,54 @@
             team.push(selectedWorker);
         }
 
+        const busyWorkers = getCurrentlyBusyWorkers();
+        for (let w of team) {
+            if (busyWorkers.has(w)) {
+                alert(`⚠️ L'agent (${w}) est actuellement occupé ! Veuillez sélectionner un autre agent disponible.`);
+                return;
+            }
+        }
+
+        const nowTs = Date.now();
+        let targetTimestamp = null;
+        if (alarmMins > 0) {
+            targetTimestamp = nowTs + (alarmMins * 60 * 1000);
+        }
+
         const activeItem = {
-            id: Date.now(),
+            id: nowTs,
             worker: team[0],
             team: team,
             type: typeVal,
             location: locationVal,
             hasEtablissement: hasEtablissement,
             startTime: startVal,
-            startDateStr: new Date().toDateString()
+            startDateStr: new Date().toDateString(),
+            alarmTargetTime: targetTimestamp,
+            alarmDismissed: false
         };
 
         activeSurveillances.push(activeItem);
 
-        // إعادة ترتيب قائمة الـ queue ونقل العمال المحددين إلى النهاية
         team.forEach(w => {
             queue = queue.filter(qWorker => qWorker !== w);
             queue.push(w);
         });
         
         document.getElementById('etablissementCheck').checked = false;
+        document.getElementById('alarmDurationInput').value = '';
         toggleEtablissementMode();
 
         saveData();
         setCurrentTimeDefaults();
+    }
+
+    function dismissAlarm(id) {
+        const item = activeSurveillances.find(s => s.id === id);
+        if (item) {
+            item.alarmDismissed = true;
+            saveData();
+        }
     }
 
     function addFirePlan() {
@@ -900,6 +1054,18 @@
 
         let team = [a1];
         if (a2) team.push(a2);
+
+        const planStart = new Date(`${dateVal}T${startVal}`);
+        const now = new Date();
+        if (planStart <= now) {
+            const busyWorkers = getCurrentlyBusyWorkers();
+            for (let w of team) {
+                if (busyWorkers.has(w)) {
+                    alert(`⚠️ L'agent (${w}) est actuellement en activité ! Impossible de lui assigner cette tâche.`);
+                    return;
+                }
+            }
+        }
 
         const planItem = {
             id: Date.now(),
@@ -972,6 +1138,43 @@
         });
 
         firePlans.splice(index, 1);
+        saveData();
+    }
+
+    // دوال إدارة VHF
+    function assignVhf() {
+        const agent = document.getElementById('vhfAgentSelect').value;
+        const zone = document.getElementById('vhfZoneInput').value.trim() || 'Zone non spécifiée';
+
+        if (!agent) {
+            alert('Veuillez choisir un agent.');
+            return;
+        }
+
+        if (vhfAssignments.length >= vhfTotalCount) {
+            alert('⚠️ Tous les appareils VHF sont actuellement attribués !');
+            return;
+        }
+
+        const activeVhf = vhfAssignments.find(v => v.agent === agent);
+        if (activeVhf) {
+            alert(`⚠️ L'agent (${agent}) détient déjà un appareil VHF !`);
+            return;
+        }
+
+        vhfAssignments.push({
+            id: Date.now(),
+            agent: agent,
+            zone: zone,
+            time: new Date().toTimeString().substring(0, 5)
+        });
+
+        document.getElementById('vhfZoneInput').value = '';
+        saveData();
+    }
+
+    function returnVhf(id) {
+        vhfAssignments = vhfAssignments.filter(v => v.id !== id);
         saveData();
     }
 
@@ -1068,6 +1271,8 @@
             history = [];
             firePlans = [];
             fireHistory = [];
+            vhfAssignments = [];
+            vhfTotalCount = 5;
             saveData();
         }
     }
@@ -1167,9 +1372,36 @@
     function updateComparisonChart() {
         const ctx = document.getElementById('comparisonChart').getContext('2d');
         const labels = Object.keys(points);
+
+        const etablissementMinMap = {};
+        labels.forEach(w => etablissementMinMap[w] = 0);
+        history.forEach(item => {
+            if (item.hasEtablissement && item.worker) {
+                labels.forEach(w => {
+                    if (item.worker.includes(w)) {
+                        etablissementMinMap[w] += (item.durationMin || 30);
+                    }
+                });
+            }
+        });
+
+        const fireMinMap = {};
+        labels.forEach(w => fireMinMap[w] = 0);
+        fireHistory.forEach(item => {
+            if (item.team) {
+                labels.forEach(w => {
+                    if (item.team.includes(w)) {
+                        fireMinMap[w] += (item.durationMin || 0);
+                    }
+                });
+            }
+        });
+
         const normalHours = labels.map(w => (points[w].normalMin / 60).toFixed(2));
         const criticalHours = labels.map(w => (points[w].criticalMin / 60).toFixed(2));
-        
+        const etablissementHours = labels.map(w => (etablissementMinMap[w] / 60).toFixed(2));
+        const fireHours = labels.map(w => (fireMinMap[w] / 60).toFixed(2));
+
         const equivExtraHours = labels.map(w => {
             const totalNormalAndCrit = (points[w].normalMin + points[w].criticalMin) / 60;
             const totalEquiv = getEquivalentNormalMinutes(w) / 60;
@@ -1191,7 +1423,17 @@
                     { 
                         label: 'Heures Critiques (x2)', 
                         data: criticalHours, 
-                        backgroundColor: '#dc3545'
+                        backgroundColor: '#ff6008'
+                    },
+                    { 
+                        label: 'Établissement', 
+                        data: etablissementHours, 
+                        backgroundColor: '#9c27b0'
+                    },
+                    { 
+                        label: 'Vérification réseau', 
+                        data: fireHours, 
+                        backgroundColor: '#d32f2f'
                     },
                     {
                         label: 'Heures Équitable',
@@ -1210,7 +1452,7 @@
                         callbacks: {
                             label: function(context) {
                                 const workerName = context.label;
-                                if (context.datasetIndex === 2) {
+                                if (context.datasetIndex === 4) {
                                     const totalEquivMinutes = getEquivalentNormalMinutes(workerName);
                                     return `Heures Équitable: ${formatTime(totalEquivMinutes)}`;
                                 } else {
@@ -1269,7 +1511,7 @@
         fireA1.innerHTML = '';
         fireA2.innerHTML = '<option value="">-- Seul (1 agent) --</option>';
 
-        const busyWorkers = getBusyWorkers();
+        const busyWorkers = getCurrentlyBusyWorkers();
         const availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
 
         if (availableWorkers.length === 0) {
@@ -1299,6 +1541,62 @@
 
         if (curA1 && availableWorkers.includes(curA1)) fireA1.value = curA1;
         if (curA2 && availableWorkers.includes(curA2)) fireA2.value = curA2;
+    }
+
+    function renderVhfOptions() {
+        const select = document.getElementById('vhfAgentSelect');
+        if (!select) return;
+
+        const currentVal = select.value;
+        select.innerHTML = '';
+
+        const allWorkers = Object.keys(points);
+        allWorkers.forEach(w => {
+            const hasVhf = vhfAssignments.some(v => v.agent === w);
+            const opt = document.createElement('option');
+            opt.value = w;
+            opt.innerText = hasVhf ? `${w} (Détient déjà un VHF)` : w;
+            select.appendChild(opt);
+        });
+
+        if (currentVal) select.value = currentVal;
+    }
+
+    function renderVhfSection() {
+        renderVhfOptions();
+
+        const inputTotal = document.getElementById('vhfTotalCountInput');
+        if (inputTotal) inputTotal.value = vhfTotalCount;
+
+        const btnBtn = document.getElementById('vhfModuleBtn');
+        const availableCount = Math.max(0, vhfTotalCount - vhfAssignments.length);
+        if (btnBtn) {
+            btnBtn.innerHTML = `📻 Radios VHF (${availableCount}/${vhfTotalCount} disponibles)`;
+        }
+
+        const activeContainer = document.getElementById('vhfActiveList');
+        if (!activeContainer) return;
+
+        activeContainer.innerHTML = '';
+
+        if (vhfAssignments.length === 0) {
+            activeContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem; padding:10px;">Aucun appareil VHF n\'est actuellement attribué.</div>';
+        } else {
+            vhfAssignments.forEach(item => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:#f8f0fc; border:1px solid #ce93d8; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;';
+                
+                card.innerHTML = `
+                    <div>
+                        <strong style="color:var(--vhf-color); font-size:1.05rem;">📻 ${item.agent}</strong>
+                        <span class="badge badge-location" style="margin-left:4px;">📍 ${item.zone}</span>
+                        <div style="font-size:0.8rem; color:#6c757d; margin-top:2px;">⏱ Remis à : ${item.time}</div>
+                    </div>
+                    <button class="btn-success btn-sm" onclick="returnVhf(${item.id})">✅ Récupérer le VHF</button>
+                `;
+                activeContainer.appendChild(card);
+            });
+        }
     }
 
     function renderFireSection() {
@@ -1398,6 +1696,50 @@
         });
     }
 
+    // العداد التنازلي للتنبيهات الصوتية والمرئية
+    function startTimerLoop() {
+        if (timerInterval) clearInterval(timerInterval);
+
+        timerInterval = setInterval(() => {
+            const now = Date.now();
+            let shouldPlayBeep = false;
+
+            activeSurveillances.forEach(item => {
+                if (item.alarmTargetTime) {
+                    const timerElem = document.getElementById(`timer_${item.id}`);
+                    const cardElem = document.getElementById(`activeCard_${item.id}`);
+
+                    const diffMs = item.alarmTargetTime - now;
+
+                    if (diffMs <= 0) {
+                        if (timerElem) {
+                            timerElem.className = 'timer-badge timer-expired';
+                            timerElem.innerHTML = '⚠️ TEMPS ÉCOULÉ !';
+                        }
+                        if (cardElem && !cardElem.classList.contains('card-alarm-active')) {
+                            cardElem.classList.add('card-alarm-active');
+                        }
+
+                        if (!item.alarmDismissed) {
+                            shouldPlayBeep = true;
+                        }
+                    } else {
+                        const totalSec = Math.floor(diffMs / 1000);
+                        const mins = String(Math.floor(totalSec / 60)).padStart(2, '0');
+                        const secs = String(totalSec % 60).padStart(2, '0');
+                        if (timerElem) {
+                            timerElem.innerHTML = `⏱️ Reste : ${mins}:${secs}`;
+                        }
+                    }
+                }
+            });
+
+            if (shouldPlayBeep) {
+                playBeepSound();
+            }
+        }, 1000);
+    }
+
     function render() {
         const sugg = getSuggestedWorker();
         const suggestedElem = document.getElementById('suggestedWorker');
@@ -1428,7 +1770,7 @@
                 suggestedElem.innerText = sugg.worker;
                 suggestedElem.style.fontSize = "1.5rem";
                 suggestedElem.style.color = "#00796b";
-                reasonElem.innerHTML = "Motif: Agent en fin de classement équitable (Possède le moins de temps total équivalent x2)";
+                reasonElem.innerHTML = "Motif: Agent en fin de classement équitable (Possède le moins de temps total du travail)";
                 if (btnSelect) btnSelect.style.display = "inline-block";
             }
         }
@@ -1452,7 +1794,12 @@
             const nowTimeStr = new Date().toTimeString().substring(0, 5);
             activeSurveillances.forEach(item => {
                 const card = document.createElement('div');
-                card.className = 'active-surveillance-card';
+                card.id = `activeCard_${item.id}`;
+
+                let isExpired = item.alarmTargetTime && (Date.now() >= item.alarmTargetTime);
+                let alarmClass = (isExpired && !item.alarmDismissed) ? 'card-alarm-active' : '';
+                card.className = `active-surveillance-card ${item.hasEtablissement ? 'etablissement-card' : ''} ${alarmClass}`;
+                
                 const teamDisplay = item.team && item.team.length > 1 ? item.team.join(', ') : item.worker;
                 
                 const endTimeInputHTML = item.hasEtablissement ? '' : `
@@ -1462,20 +1809,32 @@
                     </div>
                 `;
 
+                let timerHTML = '';
+                if (item.alarmTargetTime) {
+                    timerHTML = `<div class="timer-badge" id="timer_${item.id}">⏱️ Calcul...</div>`;
+                }
+
+                let dismissBtnHTML = '';
+                if (isExpired && !item.alarmDismissed) {
+                    dismissBtnHTML = `<button class="btn-warning btn-sm" onclick="dismissAlarm(${item.id})">🔕 Arrêter l'alarme</button>`;
+                }
+
                 card.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                        <strong style="font-size:1.1rem; color:var(--danger-color);">👥 ${teamDisplay}</strong>
+                        <strong style="font-size:1.1rem; color:${item.hasEtablissement ? '#00796b' : 'var(--danger-color)'};">👥 ${teamDisplay}</strong>
                         <div>
                             <span class="badge badge-type">🔍 ${item.type}</span>
                             <span class="badge badge-location">📍 ${item.location}</span>
                             ${item.hasEtablissement ? '<span class="badge badge-extra">🔧 Établissement (+30m)</span>' : ''}
                         </div>
                     </div>
-                    <div style="margin-top:8px; font-size:0.85rem; color:#495057;">
-                        ⏱ Heure de départ: <strong>${item.startTime}</strong>
+                    <div style="margin-top:8px; font-size:0.85rem; color:#495057; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                        <span>⏱ Heure de départ: <strong>${item.startTime}</strong></span>
+                        ${timerHTML}
                     </div>
                     <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                         ${endTimeInputHTML}
+                        ${dismissBtnHTML}
                         <button class="btn-success btn-sm" style="margin-top:14px; height:36px; flex:1;" onclick="finishIntervention(${item.id})">✅ Enregistrer la fin</button>
                     </div>
                 `;
@@ -1483,7 +1842,6 @@
             });
         }
 
-        // تحديث خيارات اختيار العامل الفردي والمجموعة
         if (document.getElementById('etablissementCheck').checked) {
             renderTeamCheckboxes();
         } else {
@@ -1516,6 +1874,7 @@
         });
 
         renderFireSection();
+        renderVhfSection();
 
         const sortedTotalTime = Object.keys(points).sort((a, b) => {
             const equivA = getEquivalentNormalMinutes(a);
@@ -1599,6 +1958,7 @@
 
         updateComparisonChart();
         renderHistory();
+        startTimerLoop();
     }
 
     setCurrentTimeDefaults();
