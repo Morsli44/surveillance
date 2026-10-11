@@ -1,2154 +1,242 @@
 <!DOCTYPE html>
-<html lang="fr" dir="ltr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Système de Gestion du Travail EQUIPE A</title>
-    <!-- Chart.js Library -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- html2pdf Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --primary-color: #0d6efd;
-            --success-color: #198754;
-            --warning-color: #fd7e14;
-            --danger-color: #dc3545;
-            --info-color: #0dcaf0;
-            --text-color: #212529;
-            --border-color: #dee2e6;
-            --fire-color: #d32f2f;
-            --vhf-color: #6f42c1;
-            --water-color: #0284c7;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 12px;
-        }
-
-        h2, h3, h4 {
-            text-align: center;
-            margin-top: 5px;
-            margin-bottom: 12px;
-        }
-
-        .container {
-            max-width: 720px;
-            margin: 0 auto;
-        }
-
-        /* شريط مستوى الماء المثبت في الأعلى */
-        .sticky-water-bar {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background-color: #e0f2fe;
-            border: 2px solid var(--water-color);
-            border-radius: 12px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 10px rgba(2, 132, 199, 0.15);
-        }
-
-        .water-header-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .water-input-box {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .input-with-unit {
-            display: flex;
-            align-items: center;
-            background: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
-            flex: 1;
-            min-width: 140px;
-        }
-
-        .input-with-unit input {
-            border: none;
-            padding: 8px 10px;
-            outline: none;
-            width: 100%;
-        }
-
-        .unit-label {
-            background: #e2e8f0;
-            padding: 8px 12px;
-            font-weight: bold;
-            color: #334155;
-            border-left: 1px solid var(--border-color);
-        }
-
-        #waterHistorySection {
-            display: none;
-            margin-top: 10px;
-            background: #ffffff;
-            border: 1px solid var(--water-color);
-            border-radius: 8px;
-            padding: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        }
-
-        .card-fire {
-            border: 2px solid var(--fire-color);
-            background-color: #fff5f5;
-        }
-
-        .card-vhf {
-            border: 2px solid var(--vhf-color);
-            background-color: #f8f0fc;
-        }
-
-        .current-turn {
-            background-color: #e7f1ff;
-            border: 2px solid var(--primary-color);
-            text-align: center;
-        }
-
-        .active-surveillance-card {
-            background-color: #fff8e1;
-            border: 2px solid var(--warning-color);
-            margin-bottom: 10px;
-            padding: 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .etablissement-card {
-            background-color: rgba(224, 247, 250, 0.6) !important;
-            border: 2px solid #00acc1 !important;
-        }
-
-        .card-alarm-active {
-            background-color: #ffe6e6 !important;
-            border: 2px solid var(--danger-color) !important;
-            animation: pulse-border 1s infinite alternate;
-        }
-
-        @keyframes pulse-border {
-            from { box-shadow: 0 0 4px var(--danger-color); }
-            to { box-shadow: 0 0 16px var(--danger-color); }
-        }
-
-        .fire-plan-card {
-            background-color: #ffebee;
-            border: 2px solid var(--fire-color);
-            margin-bottom: 10px;
-            padding: 12px;
-            border-radius: 8px;
-        }
-
-        .suggestion-card {
-            background-color: #e0f7fa;
-            border: 2px dashed #00acc1;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .suggested-name {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #00796b;
-            margin: 5px 0;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .input-field {
-            flex: 1;
-            min-width: 130px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            text-align: left;
-        }
-
-        .input-field label {
-            font-size: 0.8rem;
-            font-weight: bold;
-            color: #495057;
-        }
-
-        input, select {
-            padding: 8px 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background-color: #f8f9fa;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            margin-top: 5px;
-            cursor: pointer;
-        }
-
-        .checkbox-container input[type="checkbox"] {
-            width: auto;
-            cursor: pointer;
-        }
-
-        .team-selection-box {
-            display: none;
-            background-color: #f3e5f5;
-            border: 1px solid #ce93d8;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 10px;
-            text-align: left;
-        }
-
-        .team-selection-box h5 {
-            margin: 0 0 8px 0;
-            color: #4a148c;
-        }
-
-        .workers-checkbox-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 6px;
-        }
-
-        .worker-chip {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 5px;
-            background: #fff;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #d1c4e9;
-            font-size: 0.85rem;
-        }
-
-        button {
-            border: none;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            background-color: var(--primary-color);
-        }
-
-        .btn-success { background-color: var(--success-color); }
-        .btn-warning { background-color: var(--warning-color); }
-        .btn-danger { background-color: var(--danger-color); }
-        .btn-fire { background-color: var(--fire-color); }
-        .btn-vhf { background-color: var(--vhf-color); }
-        .btn-water { background-color: var(--water-color); }
-        .btn-secondary { background-color: #6c757d; }
-        .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
-
-        #fireModuleSection, #vhfModuleSection {
-            display: none;
-            margin-top: 10px;
-        }
-
-        ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-
-        .draggable-item {
-            cursor: grab;
-            transition: background-color 0.2s, opacity 0.2s;
-            user-select: none;
-        }
-
-        .draggable-item:active {
-            cursor: grabbing;
-        }
-
-        .draggable-item.dragging {
-            opacity: 0.4;
-            background-color: #e9ecef;
-        }
-
-        .drag-handle {
-            cursor: grab;
-            color: #888;
-            margin-right: 8px;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        .badge {
-            background-color: #e9ecef;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            font-weight: bold;
-        }
-
-        .badge-type {
-            background-color: #e3f2fd;
-            color: #0d6efd;
-            border: 1px solid #90caf9;
-        }
-
-        .badge-location {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-
-        .badge-extra {
-            background-color: #f3e5f5;
-            color: #7b1fa2;
-            border: 1px solid #ce93d8;
-        }
-
-        .badge-fire {
-            background-color: #ffebee;
-            color: var(--fire-color);
-            border: 1px solid #ffcdd2;
-        }
-
-        .badge-vhf {
-            background-color: #f3e5f5;
-            color: var(--vhf-color);
-            border: 1px solid #d1c4e9;
-        }
-
-        .badge-critical {
-            background-color: #ffe6e6;
-            color: var(--danger-color);
-        }
-
-        .badge-normal {
-            background-color: #e6ffed;
-            color: var(--success-color);
-        }
-
-        .badge-total {
-            background-color: #e0f2fe;
-            color: #0369a1;
-        }
-
-        .rank-badge {
-            background-color: #ffc107;
-            color: #000;
-            font-weight: bold;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            margin-right: 6px;
-        }
-
-        .status-tag {
-            font-size: 0.85rem;
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-top: 5px;
-            display: inline-block;
-        }
-
-        .tag-critical { background-color: #ffe6e6; color: var(--danger-color); }
-        .tag-normal { background-color: #e6ffed; color: var(--success-color); }
-
-        .timer-badge {
-            font-size: 0.85rem;
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background-color: #e0f2fe;
-            color: #0284c7;
-            border: 1px solid #38bdf8;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .timer-expired {
-            background-color: #fee2e2 !important;
-            color: #dc2626 !important;
-            border: 1px solid #f87171 !important;
-            animation: blink 0.8s infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0.5; }
-        }
-
-        .move-btns {
-            display: flex;
-            gap: 2px;
-        }
-
-        .canvas-container {
-            position: relative;
-            width: 100%;
-            height: 440px;
-            margin-top: 10px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        @media (max-width: 600px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-            .sticky-water-bar {
-                position: relative;
-            }
-        }
-
-        @media print {
-            .no-print, button, input, select, .move-btns, .drag-handle {
-                display: none !important;
-            }
-            .sticky-water-bar {
-                position: relative;
-                box-shadow: none;
-                border: 1px solid #0284c7;
-            }
-            body { background-color: #fff; }
-            .card { box-shadow: none; border: 1px solid #ccc; }
-        }
-    </style>
-</head>
-<body>
-
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Système de Gestion du Travail EQUIPE A</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+:root{--p:#0d6efd;--ok:#198754;--wa:#fd7e14;--da:#dc3545;--bd:#dee2e6;--fire:#d32f2f;--vhf:#6f42c1;--wt:#0284c7;--gas:#0f766e;--exp:#be123c}
+body{font-family:system-ui,sans-serif;background:#f4f6f9;color:#212529;margin:0;padding:12px}
+h2,h4{text-align:center;margin:5px 0 12px}.container{max-width:720px;margin:0 auto}
+.top{position:sticky;top:0;z-index:1000}
+#expiryBanner{display:none;color:#fff;border-radius:12px;padding:10px 14px;margin-bottom:8px;font-weight:700;cursor:pointer;max-height:32vh;overflow:auto;animation:bg 1s infinite alternate}
+#expiryBanner div{padding:2px 0;font-size:.9rem}
+@keyframes bg{from{background:#b91c1c;box-shadow:0 0 6px #f44}to{background:#ef4444;box-shadow:0 0 26px #f11,0 0 8px #fff}}
+.water{background:#e0f2fe;border:2px solid var(--wt);border-radius:12px;padding:10px 15px;margin-bottom:15px;box-shadow:0 4px 10px rgba(2,132,199,.15)}
+.fl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sb{justify-content:space-between}
+.unit{display:flex;align-items:center;background:#fff;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex:1;min-width:140px}
+.unit input{border:0;outline:0}.unit span{background:#e2e8f0;padding:8px 12px;font-weight:700;color:#334155}
+#waterHistorySection{display:none;margin-top:10px;background:#fff;border:1px solid var(--wt);border-radius:8px;padding:10px;max-height:200px;overflow:auto}
+.card{background:#fff;border-radius:12px;padding:15px;margin-bottom:15px;box-shadow:0 2px 8px rgba(0,0,0,.06);animation:fd .3s}
+@keyframes fd{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.cf{border:2px solid var(--fire);background:#fff5f5}.cv{border:2px solid var(--vhf);background:#f8f0fc}.cg{border:2px solid var(--gas);background:#f0fdfa}.ce{border:2px solid var(--exp);background:#fff1f2}
+.turn{background:#e7f1ff;border:2px solid var(--p);text-align:center}
+.act{background:#fff8e1;border:2px solid var(--wa);margin-bottom:10px;padding:12px;border-radius:8px}
+.etab{background:rgba(224,247,250,.6)!important;border:2px solid #00acc1!important}
+.alarm{background:#ffe6e6!important;border:2px solid var(--da)!important;animation:pb 1s infinite alternate}
+@keyframes pb{from{box-shadow:0 0 4px var(--da)}to{box-shadow:0 0 16px var(--da)}}
+.fplan{background:#ffebee;border:2px solid var(--fire);margin-bottom:10px;padding:12px;border-radius:8px}
+.sugg{background:#e0f7fa;border:2px dashed #00acc1;text-align:center}
+.sn{font-size:1.5rem;font-weight:700;color:#00796b;margin:5px 0}
+.ig{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}.if{flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px;text-align:left}.if label{font-size:.8rem;font-weight:700;color:#495057}
+input,select{padding:8px 10px;border:1px solid var(--bd);border-radius:6px;font-size:.9rem;width:100%;box-sizing:border-box}
+.cc{display:flex;align-items:center;gap:8px;background:#f8f9fa;padding:8px;border-radius:6px;border:1px solid var(--bd);margin-top:5px;cursor:pointer}.cc input{width:auto}
+.tm{display:none;background:#f3e5f5;border:1px solid #ce93d8;padding:10px;border-radius:8px;margin-top:10px;text-align:left}.tm h5{margin:0 0 8px;color:#4a148c}
+.wg{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.chip{display:flex;align-items:center;justify-content:space-between;gap:5px;background:#fff;padding:4px 8px;border-radius:4px;border:1px solid #d1c4e9;font-size:.85rem}.chip input{width:auto}
+button{border:0;padding:10px 14px;border-radius:6px;font-size:.9rem;cursor:pointer;font-weight:700;color:#fff;background:var(--p)}
+.bs{background:var(--ok)}.bw{background:var(--wa)}.bd{background:var(--da)}.bf{background:var(--fire)}.bv{background:var(--vhf)}.bt{background:var(--wt)}.bg{background:var(--gas)}.be{background:var(--exp)}.bz{background:#6c757d}.sm{padding:4px 8px;font-size:.8rem}
+#fireModuleSection,#vhfModuleSection,#gasModuleSection,#expiryModuleSection{display:none;margin-top:10px}
+ul{list-style:none;padding:0;margin:0}li{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:5px}
+.dr{cursor:grab;user-select:none}.dr.dragging{opacity:.4;background:#e9ecef}.hd{color:#888;margin-right:8px;font-weight:700;font-size:1.1rem}
+.badge{background:#e9ecef;padding:4px 8px;border-radius:4px;font-size:.85rem;font-weight:700}
+.bty{background:#e3f2fd;color:#0d6efd;border:1px solid #90caf9}.blo{background:#fff3cd;color:#856404;border:1px solid #ffeeba}.bex{background:#f3e5f5;color:#7b1fa2;border:1px solid #ce93d8}.bfi{background:#ffebee;color:var(--fire);border:1px solid #ffcdd2}.bga{background:#ccfbf1;color:var(--gas);border:1px solid #99f6e4}.bcr{background:#ffe6e6;color:var(--da)}.bno{background:#e6ffed;color:var(--ok)}.bto{background:#e0f2fe;color:#0369a1}
+.rk{background:#ffc107;color:#000;font-weight:700;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;margin-right:6px}
+.st{font-size:.85rem;font-weight:700;padding:4px 8px;border-radius:4px;margin-top:5px;display:inline-block}.tc{background:#ffe6e6;color:var(--da)}.tn{background:#e6ffed;color:var(--ok)}
+.tmr{font-size:.85rem;font-weight:700;padding:4px 8px;border-radius:4px;background:#e0f2fe;color:#0284c7;border:1px solid #38bdf8}
+.tx{background:#fee2e2!important;color:#dc2626!important;border:1px solid #f87171!important;animation:bl .8s infinite}@keyframes bl{50%{opacity:.5}}
+.mv{display:flex;gap:2px}.cvs{position:relative;width:100%;height:440px;margin-top:10px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ec{border-radius:8px;padding:10px;margin-bottom:8px;border-left:5px solid var(--ok);background:#f0fdf4}.ec.w{border-left-color:var(--wa);background:#fff7ed}.ec.d{border-left-color:var(--da);background:#fee2e2}
+.mods{margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap}.mods button{flex:1;min-width:220px;padding:12px;font-size:.95rem}
+.em{text-align:center;color:#6c757d;font-size:.9rem;padding:10px}
+@media(max-width:600px){.g2{grid-template-columns:1fr}.top{position:relative}}
+@media print{.np,button,input,select,.mv,.hd{display:none!important}.top{position:relative}body{background:#fff}.card{box-shadow:none;border:1px solid #ccc}}
+</style></head><body>
 <div class="container" id="reportArea">
+<div class="top">
+<div id="expiryBanner" class="np" onclick="openExp()"></div>
+<div class="water">
+<div class="fl sb"><strong style="color:var(--wt);font-size:1.05rem">💧 Niveau d'eau du bac anti-incendie :</strong><span id="waterLevelDisplay" class="badge" style="background:#0284c7;color:#fff;font-size:.95rem">Non renseigné</span></div>
+<div class="fl np" style="margin-top:8px"><div class="unit"><input type="number" step="0.1" id="waterLevelInput" placeholder="Ex: 8.5"><span>mètre (m)</span></div>
+<button class="bt sm" onclick="saveWater()">💾 Enregistrer</button><button class="bz sm" onclick="tg('waterHistorySection')">📜 Historique</button></div>
+<div id="waterLevelTime" style="font-size:.75rem;color:#555;margin-top:4px;text-align:right"></div>
+<div id="waterHistorySection" class="np"><div class="fl sb" style="margin-bottom:6px"><strong style="font-size:.85rem;color:var(--wt)">📜 Historique des niveaux d'eau :</strong><button class="bd sm" onclick="clearWater()">Effacer l'historique</button></div><ul id="waterHistoryList"></ul></div>
+</div></div>
+<h2>Système de Gestion du Travail EQUIPE A</h2>
+<div class="np" style="margin-bottom:15px;text-align:right"><button class="bz" id="pdfBtn" onclick="exportPDF()">📄 Télécharger le rapport (PDF)</button></div>
+<div class="card np"><h4>Ajouter un agent à la liste générale</h4><div class="ig"><input id="workerInput" placeholder="Nom de l'agent"><button onclick="addWorker()">Ajouter</button></div></div>
+<div class="card sugg np" id="suggestionCard"><h4 style="color:#00695c;margin-bottom:2px">💡 Agent recommandé pour la prochaine surveillance</h4><div class="sn" id="suggestedWorker">Calcul en cours...</div><div id="suggestionReason" style="font-size:.85rem;color:#555"></div><button id="btnSel" class="bs sm" style="margin-top:8px;display:none" onclick="pickSuggested()">Placer en tête de file</button></div>
+<div class="card turn np"><h4>Lancement d'une surveillance</h4>
+<div id="oneBox" style="margin-bottom:10px"><label style="font-size:.85rem;font-weight:700;color:#0d6efd;display:block;margin-bottom:4px">Sélectionner l'agent disponible :</label><select id="singleWorkerSelect" style="font-size:1.1rem;font-weight:700;color:#d32f2f;text-align:center;border:2px solid #0d6efd"></select></div>
+<div id="timeStatus" class="st"></div>
+<div style="margin-top:15px;border-top:1px dashed var(--bd);padding-top:12px">
+<label class="cc"><input type="checkbox" id="etCk" onchange="toggleEtab()"><span style="font-size:.85rem;font-weight:700;color:#4a148c">🔧 Établissement (+30 min fixes)</span></label>
+<div class="ig" style="margin-top:10px"><div class="if" id="typeBox"><label>Type de surveillance :</label><select id="sType"><option>À froid</option><option>À chaud</option><option>Chargement MeOH</option><option>Pénétration</option><option>Levage</option></select></div>
+<div class="if"><label>Lieu / Zone :</label><select id="sLoc"><optgroup label="Unité MeOH"><option value="Unité MeOH - V601">Unité MeOH (V601)</option><option value="Unité MeOH - V602">Unité MeOH (V602)</option><option value="Unité MeOH - K401">Unité MeOH (K401)</option><option value="Unité MeOH - H301">Unité MeOH (H301)</option><option value="Unité MeOH - F201">Unité MeOH (F201)</option></optgroup><optgroup label="Autres Unités"><option>Unité 100</option><option>MTBE</option></optgroup><optgroup label="Unité 200"><option value="Unité 200 - Chargement MeOH">Unité 200 (Chargement MeOH)</option></optgroup><optgroup label="Station"><option>Station Gaz</option></optgroup></select></div></div>
+<div class="ig"><div class="if"><label>Heure de départ:</label><input type="time" id="startTime"></div><div class="if"><label>🔔 Minuterie d'alarme (Minutes) :</label><input type="number" id="alarmIn" min="1" placeholder="Ex: 30 min (Optionnel)"></div></div>
+<div id="teamContainer" class="tm"><h5>👥 Sélectionner l'équipe disponible (Triés par le moins de participations/7j) :</h5><div class="wg" id="teamCheckboxes"></div></div>
+<button id="startBtn" style="width:100%;margin-top:12px" onclick="startInt()">🚀 Démarrer la surveillance</button></div></div>
+<div class="mods np"><button class="bf" onclick="tg('fireModuleSection')">🧯 Vérification Réseau & Extincteurs</button><button class="bv" id="vhfBtn" onclick="tg('vhfModuleSection')">📻 Radios VHF (Talkie-Walkie)</button><button class="bg" onclick="tg('gasModuleSection')">⛽ Appoint Gasoil & Huile moteur</button><button class="be" id="expBtn" onclick="tg('expiryModuleSection')">📅 Dates de validité</button></div>
 
-    <!-- شريط مستوى الماء في خزان الحريق (مثبت في الأعلى) -->
-    <div class="sticky-water-bar">
-        <div class="water-header-title">
-            <strong style="color: var(--water-color); font-size: 1.05rem;">💧 Niveau d'eau du bac anti-incendie :</strong>
-            <span id="waterLevelDisplay" class="badge" style="background-color: #0284c7; color: white; font-size: 0.95rem;">Non renseigné</span>
-        </div>
-        <div class="water-input-box no-print">
-            <div class="input-with-unit">
-                <input type="number" step="0.1" id="waterLevelInput" placeholder="Ex: 8.5">
-                <span class="unit-label">mètre (m)</span>
-            </div>
-            <button class="btn-water btn-sm" onclick="saveWaterLevel()">💾 Enregistrer</button>
-            <button class="btn-secondary btn-sm" onclick="toggleWaterHistory()">📜 Historique</button>
-        </div>
-        <div id="waterLevelTime" style="font-size: 0.75rem; color: #555; margin-top: 4px; text-align: right;"></div>
+<div id="fireModuleSection" class="np"><div class="card cf"><h4 style="color:var(--fire)">🧯 Planification : Vérification Réseau & Extincteurs</h4>
+<div class="ig"><div class="if"><label>Agent 1 (Obligatoire) :</label><select id="fA1"></select></div><div class="if"><label>Agent 2 (Optionnel - Binôme) :</label><select id="fA2"></select></div></div>
+<div class="ig"><div class="if"><label>Type de vérification :</label><select id="fType"><option value="Réseau incendie">Réseau incendie</option><option>Extincteurs</option><option value="Réseau incendie + Extincteurs">Réseau + Extincteurs</option></select></div><div class="if"><label>Date de vérification :</label><input type="date" id="fDate"></div></div>
+<div class="ig"><div class="if"><label>Heure de début :</label><input type="time" id="fStart"></div></div><button class="bf" style="width:100%;margin-top:10px" onclick="addFire()">➕ Ajouter à la liste de travail</button></div>
+<div class="card" style="border-left:5px solid var(--fire)"><h4 style="color:var(--fire)">📋 Liste de travail (Planification)</h4><div id="fPlans"></div></div>
+<div class="card" style="border-top:4px solid var(--fire)"><h4 style="color:var(--fire)">📜 Historique des Vérifications</h4><ul id="fHist"></ul></div></div>
 
-        <!-- قسم سجل مستوى المياه (Historique) -->
-        <div id="waterHistorySection" class="no-print">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <strong style="font-size: 0.85rem; color: var(--water-color);">📜 Historique des niveaux d'eau :</strong>
-                <button class="btn-danger btn-sm" style="font-size: 0.7rem; padding: 2px 6px;" onclick="clearWaterHistory()">Effacer l'historique</button>
-            </div>
-            <ul id="waterHistoryList" style="padding: 0; margin: 0;"></ul>
-        </div>
-    </div>
+<div id="vhfModuleSection" class="np"><div class="card cv"><h4 style="color:var(--vhf)">📻 Gestion des Radios VHF (Talkie-Walkie)</h4>
+<div class="ig"><div class="if"><label>Nombre total d'appareils VHF possédés :</label><input type="number" id="vTotal" min="1" onchange="setVhfTotal(this.value)"></div></div>
+<hr style="border:0;border-top:1px dashed #ce93d8;margin:12px 0"><div style="font-weight:700;color:var(--vhf);margin-bottom:8px">➕ Affecter un VHF à un agent :</div>
+<div class="ig"><div class="if"><label>Agent :</label><select id="vAgent"></select></div><div class="if"><label>Zone / Lieu :</label><input id="vZone" placeholder="Ex: Unité MeOH"></div></div><button class="bv" style="width:100%;margin-top:8px" onclick="assignVhf()">📻 Remettre un VHF</button></div>
+<div class="card" style="border-left:5px solid var(--vhf)"><h4 style="color:var(--vhf)">📻 Radios VHF actuellement attribuées</h4><div id="vList"></div></div></div>
 
-    <h2>Système de Gestion du Travail EQUIPE A</h2>
+<div id="gasModuleSection" class="np"><div class="card cg"><h4 style="color:var(--gas)">⛽ Appoint Gasoil & Huile moteur</h4>
+<div class="ig"><div class="if"><label>Agent ayant effectué le travail :</label><select id="gAgent"></select></div><div class="if"><label>Type d'appoint :</label><select id="gType"><option>Gasoil</option><option>Huile moteur</option><option>Gasoil + Huile moteur</option></select></div></div>
+<div class="ig"><div class="if"><label>Véhicule (Obligatoire) * :</label><select id="gVeh"></select></div><div class="if"><label>Kilométrage (Optionnel) :</label><input type="number" id="gKm" min="0" placeholder="Ex: 125400"></div></div>
+<div style="font-size:.78rem;color:#64748b">🕒 La date et l'heure sont enregistrées automatiquement.</div><button class="bg" style="width:100%;margin-top:10px" onclick="addRefuel()">✅ Enregistrer l'appoint</button></div>
+<div class="card" style="border-top:4px solid var(--gas)"><h4 style="color:var(--gas)">📜 Historique des appoints</h4><ul id="gList"></ul></div></div>
 
-    <!-- Bouton Télécharger PDF -->
-    <div style="margin-bottom: 15px; text-align: right;" class="no-print">
-        <button class="btn-secondary" id="pdfBtn" onclick="exportToPDF()">📄 Télécharger le rapport (PDF)</button>
-    </div>
+<div id="expiryModuleSection" class="np"><div class="card ce"><h4 style="color:var(--exp)">📅 Documents & équipements à date de validité</h4>
+<div class="ig"><div class="if"><label>Désignation (Obligatoire) * :</label><input id="eName" placeholder="Ex: Assurance, Contrôle technique, Extincteur 6kg"></div><div class="if"><label>Catégorie :</label><select id="eCat"><option>Document véhicule</option><option>Extincteur</option><option>Équipement</option><option>Autre</option></select></div></div>
+<div class="ig"><div class="if"><label>Véhicule / Emplacement :</label><select id="eVeh"></select></div><div class="if"><label>Date d'expiration * :</label><input type="date" id="eDate"></div><div class="if"><label>🔔 Rappel (jours avant) :</label><input type="number" id="eRem" min="0" value="30"></div></div>
+<button class="be" style="width:100%;margin-top:10px" onclick="addExp()">➕ Ajouter</button></div>
+<div class="card" style="border-left:5px solid var(--exp)"><h4 style="color:var(--exp)">📋 Suivi des échéances</h4><div id="eList"></div></div></div>
 
-    <!-- Ajouter un nouveau travailleur -->
-    <div class="card no-print">
-        <h4>Ajouter un agent à la liste générale</h4>
-        <div class="input-group">
-            <input type="text" id="workerInput" placeholder="Nom de l'agent">
-            <button onclick="addWorker()">Ajouter</button>
-        </div>
-    </div>
-
-    <!-- Recommandation de la prochaine garde -->
-    <div class="card suggestion-card no-print" id="suggestionCard">
-        <h4 style="color: #00695c; margin-bottom: 2px;" id="suggestionTitle">💡 Agent recommandé pour la prochaine surveillance</h4>
-        <div class="suggested-name" id="suggestedWorker">Calcul en cours...</div>
-        <div id="suggestionReason" style="font-size: 0.85rem; color: #555;"></div>
-        <button id="btnSelectSuggested" class="btn-sm btn-success" style="margin-top: 8px; display:none;" onclick="selectSuggestedWorker()">Placer en tête de file</button>
-    </div>
-
-    <!-- Agent de garde / Lancement de surveillance générale -->
-    <div class="card current-turn no-print">
-        <h4>Lancement d'une surveillance</h4>
-        
-        <div id="singleWorkerSelectionContainer" style="margin-bottom: 10px;">
-            <label style="font-size: 0.85rem; font-weight: bold; color: #0d6efd; display: block; margin-bottom: 4px;">Sélectionner l'agent disponible :</label>
-            <select id="singleWorkerSelect" style="font-size: 1.1rem; font-weight: bold; color: #d32f2f; text-align: center; border: 2px solid #0d6efd;"></select>
-        </div>
-
-        <div id="timeStatus" class="status-tag"></div>
-
-        <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 12px;">
-            <label class="checkbox-container">
-                <input type="checkbox" id="etablissementCheck" onchange="toggleEtablissementMode()">
-                <span style="font-size: 0.85rem; font-weight: bold; color: #4a148c;">🔧 Établissement (+30 min fixes)</span>
-            </label>
-
-            <div class="input-group" style="margin-top:10px;">
-                <div class="input-field" id="surveillanceTypeContainer">
-                    <label>Type de surveillance :</label>
-                    <select id="surveillanceType">
-                        <option value="À froid">À froid</option>
-                        <option value="À chaud">À chaud</option>
-                        <option value="Chargement MeOH">Chargement MeOH</option>
-                        <option value="Pénétration">Pénétration</option>
-                        <option value="Levage">Levage</option>
-                    </select>
-                </div>
-                <div class="input-field">
-                    <label>Lieu / Zone :</label>
-                    <select id="surveillanceLocation">
-                        <optgroup label="Unité MeOH">
-                            <option value="Unité MeOH - V601">Unité MeOH (V601)</option>
-                            <option value="Unité MeOH - V602">Unité MeOH (V602)</option>
-                            <option value="Unité MeOH - K401">Unité MeOH (K401)</option>
-                            <option value="Unité MeOH - H301">Unité MeOH (H301)</option>
-                            <option value="Unité MeOH - F201">Unité MeOH (F201)</option>
-                        </optgroup>
-                        <optgroup label="Autres Unités">
-                            <option value="Unité 100">Unité 100</option>
-                            <option value="MTBE">MTBE</option>
-                        </optgroup>
-                        <optgroup label="Unité 200">
-                            <option value="Unité 200 - Chargement MeOH">Unité 200 (Chargement MeOH)</option>
-                        </optgroup>
-                        <optgroup label="Station">
-                            <option value="Station Gaz">Station Gaz</option>
-                        </optgroup>
-                    </select>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <div class="input-field">
-                    <label>Heure de départ:</label>
-                    <input type="time" id="startTime">
-                </div>
-                <div class="input-field">
-                    <label>🔔 Minuterie d'alarme (Minutes) :</label>
-                    <input type="number" id="alarmDurationInput" min="1" placeholder="Ex: 30 min (Optionnel)">
-                </div>
-            </div>
-
-            <div id="teamContainer" class="team-selection-box">
-                <h5>👥 Sélectionner l'équipe disponible (Triés par le moins de participations/7j) :</h5>
-                <div class="workers-checkbox-grid" id="teamCheckboxes"></div>
-            </div>
-
-            <button id="startBtn" class="btn-primary" style="width: 100%; margin-top: 12px;" onclick="startIntervention()">🚀 Démarrer la surveillance</button>
-        </div>
-    </div>
-
-    <!-- MODULES SPECIAUX (BOUTONS D'AFFICHAGE) -->
-    <div style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;" class="no-print">
-        <button class="btn-fire" style="flex: 1; min-width: 220px; padding: 12px; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);" onclick="toggleFireModule()">
-            🧯 Vérification Réseau & Extincteurs
-        </button>
-        <button class="btn-vhf" id="vhfModuleBtn" style="flex: 1; min-width: 220px; padding: 12px; font-size: 0.95rem; box-shadow: 0 4px 6px rgba(111, 66, 193, 0.2);" onclick="toggleVhfModule()">
-            📻 Radios VHF (Talkie-Walkie)
-        </button>
-    </div>
-
-    <!-- MODULE 1 : Vérification Réseau & Extincteurs -->
-    <div id="fireModuleSection" class="no-print">
-        <div class="card card-fire">
-            <h4 style="color: var(--fire-color); margin-bottom: 5px;">🧯 Planification : Vérification Réseau & Extincteurs</h4>
-            
-            <div class="input-group" style="margin-top: 10px;">
-                <div class="input-field">
-                    <label>Agent 1 (Obligatoire) :</label>
-                    <select id="fireInputAgent1"></select>
-                </div>
-                <div class="input-field">
-                    <label>Agent 2 (Optionnel - Binôme) :</label>
-                    <select id="fireInputAgent2">
-                        <option value="">-- Seul (1 agent) --</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="input-group">
-                <div class="input-field">
-                    <label>Type de vérification :</label>
-                    <select id="fireInputType">
-                        <option value="Réseau incendie">Réseau incendie</option>
-                        <option value="Extincteurs">Extincteurs</option>
-                        <option value="Réseau incendie + Extincteurs">Réseau + Extincteurs</option>
-                    </select>
-                </div>
-                <div class="input-field">
-                    <label>Date de vérification :</label>
-                    <input type="date" id="fireInputDate">
-                </div>
-            </div>
-
-            <div class="input-group">
-                <div class="input-field">
-                    <label>Heure de début :</label>
-                    <input type="time" id="fireInputStartTime">
-                </div>
-            </div>
-
-            <button class="btn-fire" style="width: 100%; margin-top: 10px;" onclick="addFirePlan()">➕ Ajouter à la liste de travail</button>
-        </div>
-
-        <div class="card" style="border-left: 5px solid var(--fire-color);">
-            <h4 style="color: var(--fire-color);">📋 Liste de travail (Planification)</h4>
-            <div id="firePlannedList"></div>
-        </div>
-
-        <div class="card" style="border-top: 4px solid var(--fire-color);">
-            <h4 style="color: var(--fire-color);">📜 Historique des Vérifications</h4>
-            <ul id="fireHistoryList"></ul>
-        </div>
-    </div>
-
-    <!-- MODULE 2 : Gestion des Radios VHF (Talkie-Walkie) -->
-    <div id="vhfModuleSection" class="no-print">
-        <div class="card card-vhf">
-            <h4 style="color: var(--vhf-color); margin-bottom: 5px;">📻 Gestion des Radios VHF (Talkie-Walkie)</h4>
-            
-            <div class="input-group" style="margin-top: 10px;">
-                <div class="input-field">
-                    <label>Nombre total d'appareils VHF possédés :</label>
-                    <input type="number" id="vhfTotalCountInput" min="1" value="5" onchange="updateVhfTotal(this.value)">
-                </div>
-            </div>
-
-            <hr style="border: 0; border-top: 1px dashed #ce93d8; margin: 12px 0;">
-
-            <div style="font-weight: bold; color: var(--vhf-color); margin-bottom: 8px;">➕ Affecter un VHF à un agent :</div>
-
-            <div class="input-group">
-                <div class="input-field">
-                    <label>Agent :</label>
-                    <select id="vhfAgentSelect"></select>
-                </div>
-                <div class="input-field">
-                    <label>Zone / Lieu :</label>
-                    <input type="text" id="vhfZoneInput" placeholder="Ex: Unité MeOH">
-                </div>
-            </div>
-
-            <button class="btn-vhf" style="width: 100%; margin-top: 8px;" onclick="assignVhf()">📻 Remettre un VHF</button>
-        </div>
-
-        <div class="card" style="border-left: 5px solid var(--vhf-color);">
-            <h4 style="color: var(--vhf-color);">📻 Radios VHF actuellement attribuées</h4>
-            <div id="vhfActiveList"></div>
-        </div>
-    </div>
-
-    <!-- Surveillances En Cours -->
-    <div class="card no-print" style="border: 2px solid var(--warning-color);">
-        <h4 style="color: var(--warning-color);">⏳ Surveillances et Etablissements en cours</h4>
-        <div id="activeSurveillancesList"></div>
-    </div>
-
-    <!-- Ordre de la file d'attente générale -->
-    <div class="card no-print">
-        <h4>File d'attente générale (Ajustement manuel / Glisser-déposer)</h4>
-        <ul id="queueList"></ul>
-    </div>
-
-    <!-- Classement Temps Équivalent -->
-    <div class="card">
-        <h4>⚖ Classement Équitable (Normales + Critiques × 2)</h4>
-        <ul id="totalTimeRankList"></ul>
-    </div>
-
-    <!-- Classement détaillé -->
-    <div class="grid-2">
-        <div class="card">
-            <h4>🚨 Classement Heures Critiques (x2)</h4>
-            <ul id="criticalRankList"></ul>
-        </div>
-        <div class="card">
-            <h4>☀ Classement Heures Normales (x1)</h4>
-            <ul id="normalRankList"></ul>
-        </div>
-    </div>
-
-    <!-- Graphique -->
-    <div class="card">
-        <h4>Comparatif des heures de travail (Graphique)</h4>
-        <div class="canvas-container">
-            <canvas id="comparisonChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Bilan cumulatif global -->
-    <div class="card">
-        <h4>Bilan cumulatif global (Trier par points)</h4>
-        <ul id="statsList"></ul>
-    </div>
-
-    <!-- Historique des surveillances générales -->
-    <div class="card">
-        <h4>Historique des surveillances générales</h4>
-        <select id="historyFilter" class="no-print" style="margin-bottom: 10px;" onchange="renderHistory()">
-            <option value="ALL">Afficher tout l'historique</option>
-        </select>
-        <ul id="historyList"></ul>
-        <br>
-        <button class="btn-danger no-print" style="width:100%" onclick="resetAllData()">Réinitialiser le système</button>
-    </div>
+<div class="card np" style="border:2px solid var(--wa)"><h4 style="color:var(--wa)">⏳ Surveillances et Etablissements en cours</h4><div id="activeList"></div></div>
+<div class="card np"><h4>File d'attente générale (Ajustement manuel / Glisser-déposer)</h4><ul id="queueList"></ul></div>
+<div class="card"><h4>⚖ Classement Équitable (Normales + Critiques × 2)</h4><ul id="eqList"></ul></div>
+<div class="g2"><div class="card"><h4>🚨 Classement Heures Critiques (x2)</h4><ul id="crList"></ul></div><div class="card"><h4>☀ Classement Heures Normales (x1)</h4><ul id="noList"></ul></div></div>
+<div class="card"><h4>Comparatif des heures de travail (Graphique)</h4><div class="cvs"><canvas id="chart"></canvas></div></div>
+<div class="card"><h4>Bilan cumulatif global (Trier par points)</h4><ul id="statsList"></ul></div>
+<div class="card"><h4>Historique des surveillances générales</h4><select id="hFilter" class="np" style="margin-bottom:10px" onchange="renderHist()"><option value="ALL">Afficher tout l'historique</option></select><ul id="hList"></ul><br><button class="bd np" style="width:100%" onclick="resetAll()">Réinitialiser le système</button></div>
 </div>
-
 <script>
-    const defaultWorkers = ['Benyoub', 'Boumedine', 'Chalal', 'Dahmani', 'Fredj', 'Talbi'];
-
-    let queue = JSON.parse(localStorage.getItem('shift_queue_v25')) || [...defaultWorkers];
-    let points = JSON.parse(localStorage.getItem('shift_points_v25')) || {
-        'Benyoub': { normalMin: 0, criticalMin: 0, points: 0 },
-        'Boumedine': { normalMin: 0, criticalMin: 0, points: 0 },
-        'Chalal': { normalMin: 0, criticalMin: 0, points: 0 },
-        'Dahmani': { normalMin: 0, criticalMin: 0, points: 0 },
-        'Fredj': { normalMin: 0, criticalMin: 0, points: 0 },
-        'Talbi': { normalMin: 0, criticalMin: 0, points: 0 }
-    };
-    let activeSurveillances = JSON.parse(localStorage.getItem('shift_active_v25')) || [];
-    let history = JSON.parse(localStorage.getItem('shift_history_v25')) || [];
-    
-    let firePlans = JSON.parse(localStorage.getItem('shift_fire_plans_v25')) || [];
-    let fireHistory = JSON.parse(localStorage.getItem('shift_fire_history_v25')) || [];
-
-    let vhfTotalCount = parseInt(localStorage.getItem('shift_vhf_total_v25')) || 5;
-    let vhfAssignments = JSON.parse(localStorage.getItem('shift_vhf_assignments_v25')) || [];
-
-    let waterLevelData = JSON.parse(localStorage.getItem('shift_water_level_v25')) || { value: '', time: '' };
-    let waterLevelHistory = JSON.parse(localStorage.getItem('shift_water_history_v25')) || [];
-
-    let comparisonChartInstance = null;
-    let draggedIndex = null;
-    let timerInterval = null;
-
-    function saveData() {
-        localStorage.setItem('shift_queue_v25', JSON.stringify(queue));
-        localStorage.setItem('shift_points_v25', JSON.stringify(points));
-        localStorage.setItem('shift_active_v25', JSON.stringify(activeSurveillances));
-        localStorage.setItem('shift_history_v25', JSON.stringify(history));
-        localStorage.setItem('shift_fire_plans_v25', JSON.stringify(firePlans));
-        localStorage.setItem('shift_fire_history_v25', JSON.stringify(fireHistory));
-        localStorage.setItem('shift_vhf_total_v25', vhfTotalCount);
-        localStorage.setItem('shift_vhf_assignments_v25', JSON.stringify(vhfAssignments));
-        localStorage.setItem('shift_water_level_v25', JSON.stringify(waterLevelData));
-        localStorage.setItem('shift_water_history_v25', JSON.stringify(waterLevelHistory));
-        render();
-    }
-
-    function saveWaterLevel() {
-        const input = document.getElementById('waterLevelInput');
-        const numVal = parseFloat(input ? input.value : '');
-        if (!isNaN(numVal)) {
-            const valStr = `${numVal} m`;
-            const now = new Date();
-            const dateStr = `${now.toLocaleDateString('fr-FR')} à ${now.toTimeString().substring(0, 5)}`;
-            
-            waterLevelData = { value: valStr, time: dateStr };
-            waterLevelHistory.unshift({ id: Date.now(), value: valStr, time: dateStr });
-
-            saveData();
-            if (input) input.value = '';
-        } else {
-            alert('Veuillez saisir un chiffre valide pour le niveau d\'eau.');
-        }
-    }
-
-    function toggleWaterHistory() {
-        const sec = document.getElementById('waterHistorySection');
-        sec.style.display = (sec.style.display === 'none' || sec.style.display === '') ? 'block' : 'none';
-    }
-
-    function clearWaterHistory() {
-        if (confirm('Voulez-vous vraiment effacer l\'historique des niveaux d\'eau ?')) {
-            waterLevelHistory = [];
-            saveData();
-        }
-    }
-
-    function renderWaterLevel() {
-        const display = document.getElementById('waterLevelDisplay');
-        const timeElem = document.getElementById('waterLevelTime');
-
-        if (display) {
-            if (waterLevelData.value) {
-                display.innerText = waterLevelData.value;
-                display.style.backgroundColor = '#0284c7';
-            } else {
-                display.innerText = 'Non renseigné';
-                display.style.backgroundColor = '#6c757d';
-            }
-        }
-
-        if (timeElem) {
-            if (waterLevelData.time) {
-                timeElem.innerText = `Dernière mise à jour : ${waterLevelData.time}`;
-            } else {
-                timeElem.innerText = '';
-            }
-        }
-
-        const historyList = document.getElementById('waterHistoryList');
-        if (historyList) {
-            historyList.innerHTML = '';
-            if (waterLevelHistory.length === 0) {
-                historyList.innerHTML = '<li style="font-size: 0.75rem; color: #6c757d; justify-content: center;">Aucun historique enregistré</li>';
-            } else {
-                waterLevelHistory.forEach(item => {
-                    const li = document.createElement('li');
-                    li.style.cssText = 'font-size: 0.8rem; padding: 4px 0; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between;';
-                    li.innerHTML = `
-                        <strong>💧 ${item.value}</strong>
-                        <span style="color: #64748b; font-size: 0.75rem;">📅 ${item.time}</span>
-                    `;
-                    historyList.appendChild(li);
-                });
-            }
-        }
-    }
-
-    function toggleFireModule() {
-        const fireModule = document.getElementById('fireModuleSection');
-        fireModule.style.display = (fireModule.style.display === 'none' || fireModule.style.display === '') ? 'block' : 'none';
-    }
-
-    function toggleVhfModule() {
-        const vhfModule = document.getElementById('vhfModuleSection');
-        vhfModule.style.display = (vhfModule.style.display === 'none' || vhfModule.style.display === '') ? 'block' : 'none';
-    }
-
-    function updateVhfTotal(newVal) {
-        const val = parseInt(newVal);
-        if (val && val >= 1) {
-            vhfTotalCount = val;
-            saveData();
-        }
-    }
-
-    function formatTime(totalMinutes) {
-        const hrs = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
-        const mins = String(totalMinutes % 60).padStart(2, '0');
-        return `${hrs}h: ${mins}min`;
-    }
-
-    function setCurrentTimeDefaults() {
-        const now = new Date();
-        const timeStr = now.toTimeString().substring(0, 5);
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-
-        const startTime = document.getElementById('startTime');
-        const fireStartTime = document.getElementById('fireInputStartTime');
-        const fireDate = document.getElementById('fireInputDate');
-
-        if (startTime) startTime.value = timeStr;
-        if (fireStartTime) fireStartTime.value = timeStr;
-        if (fireDate) fireDate.value = `${yyyy}-${mm}-${dd}`;
-    }
-
-    function isCriticalHour(hour) {
-        return (hour >= 16 && hour < 19) || (hour >= 0 && hour < 7);
-    }
-
-    function getEquivalentNormalMinutes(worker) {
-        const w = points[worker];
-        if (!w) return 0;
-        return w.normalMin + (w.criticalMin * 2);
-    }
-
-    function getCurrentlyBusyWorkers() {
-        let busy = new Set();
-        const now = new Date();
-
-        activeSurveillances.forEach(item => {
-            const workersList = item.team && item.team.length > 0 ? item.team : [item.worker];
-            workersList.forEach(w => busy.add(w));
-        });
-
-        firePlans.forEach(plan => {
-            if (plan.date && plan.startTime) {
-                const planStart = new Date(`${plan.date}T${plan.startTime}`);
-                if (now >= planStart) {
-                    if (plan.team && plan.team.length > 0) {
-                        plan.team.forEach(w => busy.add(w));
-                    }
-                }
-            }
-        });
-
-        return busy;
-    }
-
-    function getEtablissementCountLast7Days(worker) {
-        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        let count = 0;
-
-        history.forEach(item => {
-            if (item.hasEtablissement && (item.timestamp || 0) >= sevenDaysAgo) {
-                if (item.worker && item.worker.includes(worker)) {
-                    count++;
-                }
-            }
-        });
-
-        return count;
-    }
-
-    function renderSingleWorkerSelect() {
-        const select = document.getElementById('singleWorkerSelect');
-        if (!select) return;
-
-        const busyWorkers = getCurrentlyBusyWorkers();
-        const currentSelected = select.value;
-        select.innerHTML = '';
-
-        const availableWorkers = queue.filter(w => !busyWorkers.has(w));
-
-        if (availableWorkers.length === 0) {
-            const opt = document.createElement('option');
-            opt.value = "";
-            opt.innerText = "-- Aucun agent disponible actuellement --";
-            select.appendChild(opt);
-            select.disabled = true;
-        } else {
-            select.disabled = false;
-            availableWorkers.forEach(w => {
-                const opt = document.createElement('option');
-                opt.value = w;
-                opt.innerText = w;
-                select.appendChild(opt);
-            });
-            if (currentSelected && availableWorkers.includes(currentSelected)) {
-                select.value = currentSelected;
-            }
-        }
-    }
-
-    function toggleEtablissementMode() {
-        const isChecked = document.getElementById('etablissementCheck').checked;
-        const typeSelect = document.getElementById('surveillanceType');
-        const typeContainer = document.getElementById('surveillanceTypeContainer');
-        const teamContainer = document.getElementById('teamContainer');
-        const singleWorkerContainer = document.getElementById('singleWorkerSelectionContainer');
-        const startBtn = document.getElementById('startBtn');
-
-        if (isChecked) {
-            typeContainer.style.opacity = '0.4';
-            typeSelect.disabled = true;
-            singleWorkerContainer.style.display = 'none';
-            teamContainer.style.display = 'block';
-            renderTeamCheckboxes();
-            if (startBtn) startBtn.innerHTML = '🛠️ Mise en place d\'un établissement';
-        } else {
-            typeContainer.style.opacity = '1';
-            typeSelect.disabled = false;
-            singleWorkerContainer.style.display = 'block';
-            teamContainer.style.display = 'none';
-            renderSingleWorkerSelect();
-            if (startBtn) startBtn.innerHTML = '🚀 Démarrer la surveillance';
-        }
-    }
-
-    function renderTeamCheckboxes() {
-        const teamBox = document.getElementById('teamCheckboxes');
-        teamBox.innerHTML = '';
-        
-        const busyWorkers = getCurrentlyBusyWorkers();
-
-        let availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
-
-        if (availableWorkers.length === 0) {
-            teamBox.innerHTML = '<div style="font-size:0.85rem; color:#dc3545; font-weight:bold;">Aucun agent disponible (Tous les agents sont occupés).</div>';
-            return;
-        }
-
-        availableWorkers.sort((a, b) => {
-            const countA = getEtablissementCountLast7Days(a);
-            const countB = getEtablissementCountLast7Days(b);
-            return countA - countB;
-        });
-
-        availableWorkers.forEach(worker => {
-            const count7Days = getEtablissementCountLast7Days(worker);
-            const label = document.createElement('label');
-            label.className = 'worker-chip';
-            label.innerHTML = `
-                <div style="display:flex; align-items:center; gap:5px;">
-                    <input type="checkbox" class="team-member-checkbox" value="${worker}">
-                    <span><strong>${worker}</strong></span>
-                </div>
-                <span class="badge" style="font-size:0.7rem; background-color:#e1bee7; color:#4a148c;" title="Nombre d'établissements ces 7 derniers jours">${count7Days} Étab. / 7j</span>
-            `;
-            teamBox.appendChild(label);
-        });
-    }
-
-    function addWorker() {
-        const input = document.getElementById('workerInput');
-        const name = input.value.trim();
-        if (name && !queue.includes(name)) {
-            queue.push(name);
-            if (!(name in points)) {
-                points[name] = { normalMin: 0, criticalMin: 0, points: 0 };
-            }
-            input.value = '';
-            saveData();
-        }
-    }
-
-    function moveQueue(index, direction) {
-        const targetIndex = index + direction;
-        if (targetIndex >= 0 && targetIndex < queue.length) {
-            const temp = queue[index];
-            queue[index] = queue[targetIndex];
-            queue[targetIndex] = temp;
-            saveData();
-        }
-    }
-
-    function removeWorkerFromQueue(name) {
-        queue = queue.filter(w => w !== name);
-        saveData();
-    }
-
-    function removeWorkerCompletely(name) {
-        if (confirm(`Voulez-vous vraiment supprimer l'agent (${name}) ?`)) {
-            queue = queue.filter(w => w !== name);
-            delete points[name];
-            saveData();
-        }
-    }
-
-    function editWorkerStats(name) {
-        const cur = points[name];
-        const newNormalH = prompt(`Heures normales pour (${name}):`, Math.floor(cur.normalMin / 60));
-        const newNormalM = prompt(`Minutes normales pour (${name}):`, cur.normalMin % 60);
-        const newCritH = prompt(`Heures critiques pour (${name}):`, Math.floor(cur.criticalMin / 60));
-        const newCritM = prompt(`Minutes critiques pour (${name}):`, cur.criticalMin % 60);
-
-        if (newNormalH !== null && newCritH !== null) {
-            const nMin = (parseInt(newNormalH) || 0) * 60 + (parseInt(newNormalM) || 0);
-            const cMin = (parseInt(newCritH) || 0) * 60 + (parseInt(newCritM) || 0);
-            const pts = (nMin / 60) + ((cMin / 60) * 2);
-
-            points[name] = {
-                normalMin: nMin,
-                criticalMin: cMin,
-                points: parseFloat(pts.toFixed(2))
-            };
-            saveData();
-        }
-    }
-
-    function playBeepSound() {
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
-            
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-        } catch(e) {
-            console.error("Audio Play Error: ", e);
-        }
-    }
-
-    function startIntervention() {
-        const startVal = document.getElementById('startTime').value;
-        const hasEtablissement = document.getElementById('etablissementCheck').checked;
-        const typeVal = hasEtablissement ? 'Établissement' : document.getElementById('surveillanceType').value;
-        const locationVal = document.getElementById('surveillanceLocation').value;
-        const alarmMins = parseInt(document.getElementById('alarmDurationInput').value) || 0;
-
-        if (!startVal) {
-            alert('Veuillez sélectionner l\'heure de départ.');
-            return;
-        }
-
-        let team = [];
-
-        if (hasEtablissement) {
-            const checkedBoxes = document.querySelectorAll('.team-member-checkbox:checked');
-            checkedBoxes.forEach(cb => {
-                team.push(cb.value);
-            });
-
-            if (team.length === 0) {
-                alert('Veuillez sélectionner au moins un agent pour l\'établissement.');
-                return;
-            }
-        } else {
-            const selectedWorker = document.getElementById('singleWorkerSelect').value;
-            if (!selectedWorker) {
-                alert('Aucun agent disponible pour cette surveillance.');
-                return;
-            }
-            team.push(selectedWorker);
-        }
-
-        const busyWorkers = getCurrentlyBusyWorkers();
-        for (let w of team) {
-            if (busyWorkers.has(w)) {
-                alert(`⚠️ L'agent (${w}) est actuellement occupé ! Veuillez sélectionner un autre agent disponible.`);
-                return;
-            }
-        }
-
-        const nowTs = Date.now();
-        let targetTimestamp = null;
-        if (alarmMins > 0) {
-            targetTimestamp = nowTs + (alarmMins * 60 * 1000);
-        }
-
-        const activeItem = {
-            id: nowTs,
-            worker: team[0],
-            team: team,
-            type: typeVal,
-            location: locationVal,
-            hasEtablissement: hasEtablissement,
-            startTime: startVal,
-            startDateStr: new Date().toDateString(),
-            alarmTargetTime: targetTimestamp,
-            alarmDismissed: false
-        };
-
-        activeSurveillances.push(activeItem);
-
-        team.forEach(w => {
-            queue = queue.filter(qWorker => qWorker !== w);
-            queue.push(w);
-        });
-        
-        document.getElementById('etablissementCheck').checked = false;
-        document.getElementById('alarmDurationInput').value = '';
-        toggleEtablissementMode();
-
-        saveData();
-        setCurrentTimeDefaults();
-    }
-
-    function dismissAlarm(id) {
-        const item = activeSurveillances.find(s => s.id === id);
-        if (item) {
-            item.alarmDismissed = true;
-            saveData();
-        }
-    }
-
-    function addFirePlan() {
-        const a1 = document.getElementById('fireInputAgent1').value;
-        const a2 = document.getElementById('fireInputAgent2').value;
-        const typeVal = document.getElementById('fireInputType').value;
-        const dateVal = document.getElementById('fireInputDate').value;
-        const startVal = document.getElementById('fireInputStartTime').value;
-
-        if (!a1) {
-            alert('Veuillez choisir au moins le premier agent disponible.');
-            return;
-        }
-        if (a1 === a2) {
-            alert('Veuillez choisir deux agents différents.');
-            return;
-        }
-        if (!dateVal || !startVal) {
-            alert('Veuillez spécifier la date et l\'heure de début.');
-            return;
-        }
-
-        let team = [a1];
-        if (a2) team.push(a2);
-
-        const planStart = new Date(`${dateVal}T${startVal}`);
-        const now = new Date();
-        if (planStart <= now) {
-            const busyWorkers = getCurrentlyBusyWorkers();
-            for (let w of team) {
-                if (busyWorkers.has(w)) {
-                    alert(`⚠️ L'agent (${w}) est actuellement en activité ! Impossible de lui assigner cette tâche.`);
-                    return;
-                }
-            }
-        }
-
-        const planItem = {
-            id: Date.now(),
-            team: team,
-            type: typeVal,
-            date: dateVal,
-            startTime: startVal
-        };
-
-        firePlans.push(planItem);
-        saveData();
-    }
-
-    function deleteFirePlan(id) {
-        firePlans = firePlans.filter(p => p.id !== id);
-        saveData();
-    }
-
-    function confirmFirePlan(id) {
-        const index = firePlans.findIndex(p => p.id === id);
-        if (index === -1) return;
-
-        const plan = firePlans[index];
-        const endInput = document.getElementById(`fireEndTime_${id}`);
-        const endVal = endInput ? endInput.value : '';
-
-        if (!endVal) {
-            alert('Veuillez indiquer l\'heure de fin de vérification.');
-            return;
-        }
-
-        const startDate = new Date(plan.date + 'T' + plan.startTime);
-        let endDate = new Date(plan.date + 'T' + endVal);
-
-        if (endDate <= startDate) {
-            endDate.setDate(endDate.getDate() + 1);
-        }
-
-        let realDurationMinutes = Math.round((endDate - startDate) / 60000);
-        let normalMin = 0;
-        let criticalMin = 0;
-        let tempDate = new Date(startDate.getTime());
-
-        while (tempDate < endDate) {
-            if (isCriticalHour(tempDate.getHours())) criticalMin++;
-            else normalMin++;
-            tempDate.setMinutes(tempDate.getMinutes() + 1);
-        }
-
-        const earnedPoints = (normalMin / 60) + ((criticalMin / 60) * 2);
-
-        plan.team.forEach(w => {
-            if (!points[w]) points[w] = { normalMin: 0, criticalMin: 0, points: 0 };
-            points[w].normalMin += normalMin;
-            points[w].criticalMin += criticalMin;
-            points[w].points += parseFloat(earnedPoints.toFixed(2));
-        });
-
-        fireHistory.push({
-            id: Date.now(),
-            team: plan.team.join(', '),
-            type: plan.type,
-            date: plan.date,
-            timeRange: `${plan.startTime} - ${endVal}`,
-            durationMin: realDurationMinutes,
-            normalMin: normalMin,
-            criticalMin: criticalMin,
-            points: earnedPoints.toFixed(2),
-            timestamp: startDate.getTime()
-        });
-
-        firePlans.splice(index, 1);
-        saveData();
-    }
-
-    function assignVhf() {
-        const agent = document.getElementById('vhfAgentSelect').value;
-        const zone = document.getElementById('vhfZoneInput').value.trim() || 'Zone non spécifiée';
-
-        if (!agent) {
-            alert('Veuillez choisir un agent.');
-            return;
-        }
-
-        if (vhfAssignments.length >= vhfTotalCount) {
-            alert('⚠️ Tous les appareils VHF sont actuellement attribués !');
-            return;
-        }
-
-        const activeVhf = vhfAssignments.find(v => v.agent === agent);
-        if (activeVhf) {
-            alert(`⚠️ L'agent (${agent}) détient déjà un appareil VHF !`);
-            return;
-        }
-
-        vhfAssignments.push({
-            id: Date.now(),
-            agent: agent,
-            zone: zone,
-            time: new Date().toTimeString().substring(0, 5)
-        });
-
-        document.getElementById('vhfZoneInput').value = '';
-        saveData();
-    }
-
-    function returnVhf(id) {
-        vhfAssignments = vhfAssignments.filter(v => v.id !== id);
-        saveData();
-    }
-
-    function finishIntervention(id) {
-        const index = activeSurveillances.findIndex(item => item.id === id);
-        if (index === -1) return;
-
-        const item = activeSurveillances[index];
-        const startDate = new Date(item.startDateStr + ' ' + item.startTime);
-
-        let normalMin = 0;
-        let criticalMin = 0;
-        let totalMinutesWithExtra = 0;
-        let dateStr = "";
-
-        if (item.hasEtablissement) {
-            normalMin = 30;
-            criticalMin = 0;
-            totalMinutesWithExtra = 30;
-
-            const yyyy = startDate.getFullYear();
-            const mm = String(startDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(startDate.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd} | Heure de départ: ${item.startTime}`;
-        } else {
-            const endInput = document.getElementById(`endTime_${id}`);
-            const endVal = endInput ? endInput.value : '';
-
-            if (!endVal) {
-                alert('Veuillez sélectionner l\'heure de retour.');
-                return;
-            }
-
-            let endDate = new Date(item.startDateStr + ' ' + endVal);
-            if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
-
-            let realDurationMinutes = Math.round((endDate - startDate) / 60000);
-            let tempDate = new Date(startDate.getTime());
-
-            while (tempDate < endDate) {
-                if (isCriticalHour(tempDate.getHours())) criticalMin++;
-                else normalMin++;
-                tempDate.setMinutes(tempDate.getMinutes() + 1);
-            }
-
-            totalMinutesWithExtra = realDurationMinutes;
-
-            const yyyy = startDate.getFullYear();
-            const mm = String(startDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(startDate.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd} | ${item.startTime} - ${endVal}`;
-        }
-
-        const earnedPoints = (normalMin / 60) + ((criticalMin / 60) * 2);
-        const workersArray = item.team && item.team.length > 0 ? item.team : [item.worker];
-
-        workersArray.forEach(w => {
-            if (!points[w]) points[w] = { normalMin: 0, criticalMin: 0, points: 0 };
-            points[w].normalMin += normalMin;
-            points[w].criticalMin += criticalMin;
-            points[w].points += parseFloat(earnedPoints.toFixed(2));
-        });
-
-        history.push({
-            worker: workersArray.join(', '),
-            type: item.type,
-            location: item.location,
-            hasEtablissement: item.hasEtablissement,
-            durationMin: totalMinutesWithExtra,
-            normalMin: normalMin,
-            criticalMin: criticalMin,
-            points: earnedPoints.toFixed(2),
-            date: dateStr,
-            timestamp: startDate.getTime()
-        });
-
-        activeSurveillances.splice(index, 1);
-        saveData();
-    }
-
-    function resetAllData() {
-        if (confirm('Attention : Toutes les données seront supprimées définitivement ! Continuer ?')) {
-            localStorage.clear();
-            queue = [...defaultWorkers];
-            points = {
-                'Benyoub': { normalMin: 0, criticalMin: 0, points: 0 },
-                'Boumedine': { normalMin: 0, criticalMin: 0, points: 0 },
-                'Chalal': { normalMin: 0, criticalMin: 0, points: 0 },
-                'Dahmani': { normalMin: 0, criticalMin: 0, points: 0 },
-                'Fredj': { normalMin: 0, criticalMin: 0, points: 0 },
-                'Talbi': { normalMin: 0, criticalMin: 0, points: 0 }
-            };
-            activeSurveillances = [];
-            history = [];
-            firePlans = [];
-            fireHistory = [];
-            vhfAssignments = [];
-            vhfTotalCount = 5;
-            waterLevelData = { value: '', time: '' };
-            waterLevelHistory = [];
-            saveData();
-        }
-    }
-
-    function getSuggestedWorker() {
-        const workers = Object.keys(points);
-        if (workers.length === 0) return null;
-
-        // التحقق من خروج جميع العمال مرة واحدة على الأقل في السجل (مراقبة عامة أو إطفاء)
-        const hasAllWorkersParticipated = workers.every(worker => {
-            const inGeneralHistory = history.some(h => h.worker && h.worker.includes(worker));
-            const inFireHistory = fireHistory.some(fh => fh.team && fh.team.includes(worker));
-            return inGeneralHistory || inFireHistory;
-        });
-
-        if (!hasAllWorkersParticipated) {
-            return {
-                isFirstRoundFinished: false,
-                isEqual: false,
-                worker: null
-            };
-        }
-
-        // تحديد العمال المتاحين حالياً فقط (غير المشغولين في حراسة جارية أو مهمة مفعلة)
-        const busyWorkers = getCurrentlyBusyWorkers();
-        const availableWorkers = workers.filter(w => !busyWorkers.has(w));
-
-        if (availableWorkers.length === 0) {
-            return {
-                isFirstRoundFinished: true,
-                isEqual: false,
-                noAvailable: true,
-                worker: null
-            };
-        }
-
-        // ترتيب العمال المتاحين حسب النقاط المترتبة والوقت المكافئ
-        availableWorkers.sort((a, b) => {
-            const equivA = getEquivalentNormalMinutes(a);
-            const equivB = getEquivalentNormalMinutes(b);
-            if (equivA !== equivB) {
-                return equivA - equivB; // الأقل وقت مكافئ أولاً
-            }
-            return points[a].normalMin - points[b].normalMin;
-        });
-
-        const bestWorker = availableWorkers[0];
-
-        return { 
-            isFirstRoundFinished: true,
-            isEqual: false,
-            worker: bestWorker
-        };
-    }
-
-    function selectSuggestedWorker() {
-        const sugg = getSuggestedWorker();
-        if (sugg && sugg.isFirstRoundFinished && sugg.worker) {
-            queue = queue.filter(w => w !== sugg.worker);
-            queue.unshift(sugg.worker);
-            saveData();
-        }
-    }
-
-    function renderHistory() {
-        const historyList = document.getElementById('historyList');
-        const filter = document.getElementById('historyFilter').value;
-        historyList.innerHTML = '';
-
-        history.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-        const filteredHistory = filter === 'ALL' ? history : history.filter(h => h.worker.includes(filter));
-
-        if (filteredHistory.length === 0) {
-            historyList.innerHTML = '<li style="justify-content:center; color:#6c757d;">Aucun historique enregistré</li>';
-            return;
-        }
-
-        filteredHistory.forEach(item => {
-            const li = document.createElement('li');
-            li.style.flexDirection = 'column';
-            li.style.alignItems = 'flex-start';
-
-            const etablissementBadge = item.hasEtablissement ? '<span class="badge badge-extra" style="margin-left:4px;">🔧 Établissement (+30m)</span>' : '';
-
-            li.innerHTML = `
-                <div style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                    <div>
-                        <strong>👥 ${item.worker}</strong>
-                        <span class="badge badge-type" style="margin-left:4px;">🔍 ${item.type || 'N/A'}</span>
-                        <span class="badge badge-location" style="margin-left:4px;">📍 ${item.location || 'N/A'}</span>
-                        ${etablissementBadge}
-                    </div>
-                    <span class="badge">Durée: ${formatTime(item.durationMin)} (${item.points} pts / pers)</span>
-                </div>
-                <div style="width:100%; display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem;">
-                    <span style="color:#6c757d;">📅 ${item.date}</span>
-                    <span>☀ ${formatTime(item.normalMin)} Normale | 🚨 ${formatTime(item.criticalMin)} Critique</span>
-                </div>
-            `;
-            historyList.appendChild(li);
-        });
-    }
-
-    function updateComparisonChart() {
-        const ctx = document.getElementById('comparisonChart').getContext('2d');
-        const labels = Object.keys(points);
-
-        const etablissementMinMap = {};
-        labels.forEach(w => etablissementMinMap[w] = 0);
-        history.forEach(item => {
-            if (item.hasEtablissement && item.worker) {
-                labels.forEach(w => {
-                    if (item.worker.includes(w)) {
-                        etablissementMinMap[w] += (item.durationMin || 30);
-                    }
-                });
-            }
-        });
-
-        const fireMinMap = {};
-        labels.forEach(w => fireMinMap[w] = 0);
-        fireHistory.forEach(item => {
-            if (item.team) {
-                labels.forEach(w => {
-                    if (item.team.includes(w)) {
-                        fireMinMap[w] += (item.durationMin || 0);
-                    }
-                });
-            }
-        });
-
-        const normalHours = labels.map(w => (points[w].normalMin / 60).toFixed(2));
-        const criticalHours = labels.map(w => (points[w].criticalMin / 60).toFixed(2));
-        const etablissementHours = labels.map(w => (etablissementMinMap[w] / 60).toFixed(2));
-        const fireHours = labels.map(w => (fireMinMap[w] / 60).toFixed(2));
-
-        const equivExtraHours = labels.map(w => {
-            const totalNormalAndCrit = (points[w].normalMin + points[w].criticalMin) / 60;
-            const totalEquiv = getEquivalentNormalMinutes(w) / 60;
-            return Math.max(0, totalEquiv - totalNormalAndCrit).toFixed(2);
-        });
-
-        if (comparisonChartInstance) comparisonChartInstance.destroy();
-
-        comparisonChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { 
-                        label: 'Heures Normales', 
-                        data: normalHours, 
-                        backgroundColor: '#198754'
-                    },
-                    { 
-                        label: 'Heures Critiques (x2)', 
-                        data: criticalHours, 
-                        backgroundColor: '#ff6008'
-                    },
-                    { 
-                        label: 'Établissement', 
-                        data: etablissementHours, 
-                        backgroundColor: '#9c27b0'
-                    },
-                    { 
-                        label: 'Vérification réseau', 
-                        data: fireHours, 
-                        backgroundColor: '#d32f2f'
-                    },
-                    {
-                        label: 'Heures Équitable',
-                        data: equivExtraHours,
-                        backgroundColor: 'rgba(14, 165, 233, 0.25)',
-                        borderColor: 'rgba(14, 165, 233, 0.6)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const workerName = context.label;
-                                if (context.datasetIndex === 4) {
-                                    const totalEquivMinutes = getEquivalentNormalMinutes(workerName);
-                                    return `Heures Équitable: ${formatTime(totalEquivMinutes)}`;
-                                } else {
-                                    const valInHours = context.raw || 0;
-                                    const totalMins = Math.round(valInHours * 60);
-                                    return `${context.dataset.label}: ${formatTime(totalMins)}`;
-                                }
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, title: { display: true, text: 'Temps en heures (h)' } }
-                }
-            }
-        });
-    }
-
-    function exportToPDF() {
-        const element = document.getElementById('reportArea');
-        const btn = document.getElementById('pdfBtn');
-        btn.innerText = "⏳ Génération du PDF...";
-
-        const noPrintElems = document.querySelectorAll('.no-print');
-        noPrintElems.forEach(el => el.style.display = 'none');
-
-        const opt = {
-            margin:       [10, 10, 10, 10],
-            filename:     'Rapport_Surveillances.pdf',
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        html2pdf().set(opt).from(element).save().then(() => {
-            noPrintElems.forEach(el => el.style.display = '');
-            btn.innerText = "📄 Télécharger le rapport (PDF)";
-        }).catch(err => {
-            console.error(err);
-            window.print();
-            noPrintElems.forEach(el => el.style.display = '');
-            btn.innerText = "📄 Télécharger le rapport (PDF)";
-        });
-    }
-
-    function renderFireOptions() {
-        const fireA1 = document.getElementById('fireInputAgent1');
-        const fireA2 = document.getElementById('fireInputAgent2');
-        
-        if (!fireA1 || !fireA2) return;
-
-        const curA1 = fireA1.value;
-        const curA2 = fireA2.value;
-
-        fireA1.innerHTML = '';
-        fireA2.innerHTML = '<option value="">-- Seul (1 agent) --</option>';
-
-        const busyWorkers = getCurrentlyBusyWorkers();
-        const availableWorkers = Object.keys(points).filter(w => !busyWorkers.has(w));
-
-        if (availableWorkers.length === 0) {
-            const opt1 = document.createElement('option');
-            opt1.value = "";
-            opt1.innerText = "-- Aucun agent disponible --";
-            fireA1.appendChild(opt1);
-            fireA1.disabled = true;
-            fireA2.disabled = true;
-            return;
-        }
-
-        fireA1.disabled = false;
-        fireA2.disabled = false;
-
-        availableWorkers.forEach(w => {
-            const opt1 = document.createElement('option');
-            opt1.value = w;
-            opt1.innerText = w;
-            fireA1.appendChild(opt1);
-
-            const opt2 = document.createElement('option');
-            opt2.value = w;
-            opt2.innerText = w;
-            fireA2.appendChild(opt2);
-        });
-
-        if (curA1 && availableWorkers.includes(curA1)) fireA1.value = curA1;
-        if (curA2 && availableWorkers.includes(curA2)) fireA2.value = curA2;
-    }
-
-    function renderVhfOptions() {
-        const select = document.getElementById('vhfAgentSelect');
-        if (!select) return;
-
-        const currentVal = select.value;
-        select.innerHTML = '';
-
-        const allWorkers = Object.keys(points);
-        allWorkers.forEach(w => {
-            const hasVhf = vhfAssignments.some(v => v.agent === w);
-            const opt = document.createElement('option');
-            opt.value = w;
-            opt.innerText = hasVhf ? `${w} (Détient déjà un VHF)` : w;
-            select.appendChild(opt);
-        });
-
-        if (currentVal) select.value = currentVal;
-    }
-
-    function renderVhfSection() {
-        renderVhfOptions();
-
-        const inputTotal = document.getElementById('vhfTotalCountInput');
-        if (inputTotal) inputTotal.value = vhfTotalCount;
-
-        const btnBtn = document.getElementById('vhfModuleBtn');
-        const availableCount = Math.max(0, vhfTotalCount - vhfAssignments.length);
-        if (btnBtn) {
-            btnBtn.innerHTML = `📻 Radios VHF (${availableCount}/${vhfTotalCount} disponibles)`;
-        }
-
-        const activeContainer = document.getElementById('vhfActiveList');
-        if (!activeContainer) return;
-
-        activeContainer.innerHTML = '';
-
-        if (vhfAssignments.length === 0) {
-            activeContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem; padding:10px;">Aucun appareil VHF n\'est actuellement attribué.</div>';
-        } else {
-            vhfAssignments.forEach(item => {
-                const card = document.createElement('div');
-                card.style.cssText = 'background:#f8f0fc; border:1px solid #ce93d8; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;';
-                
-                card.innerHTML = `
-                    <div>
-                        <strong style="color:var(--vhf-color); font-size:1.05rem;">📻 ${item.agent}</strong>
-                        <span class="badge badge-location" style="margin-left:4px;">📍 ${item.zone}</span>
-                        <div style="font-size:0.8rem; color:#6c757d; margin-top:2px;">⏱ Remis à : ${item.time}</div>
-                    </div>
-                    <button class="btn-success btn-sm" onclick="returnVhf(${item.id})">✅ Récupérer le VHF</button>
-                `;
-                activeContainer.appendChild(card);
-            });
-        }
-    }
-
-    function renderFireSection() {
-        renderFireOptions();
-
-        const plannedContainer = document.getElementById('firePlannedList');
-        if (!plannedContainer) return;
-
-        plannedContainer.innerHTML = '';
-
-        if (firePlans.length === 0) {
-            plannedContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem; padding:10px;">Aucune vérification planifiée.</div>';
-        } else {
-            const nowTimeStr = new Date().toTimeString().substring(0, 5);
-            firePlans.forEach(plan => {
-                const card = document.createElement('div');
-                card.className = 'fire-plan-card';
-                
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                        <strong style="font-size:1.05rem; color:var(--fire-color);">👥 ${plan.team.join(' & ')}</strong>
-                        <span class="badge badge-fire">🧯 ${plan.type}</span>
-                    </div>
-                    <div style="margin-top:6px; font-size:0.85rem; color:#495057;">
-                        📅 Date : <strong>${plan.date}</strong> | ⏱️ Début : <strong>${plan.startTime}</strong>
-                    </div>
-                    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <div style="flex:1; min-width:120px;">
-                            <label style="font-size:0.75rem; font-weight:bold;">Heure de fin :</label>
-                            <input type="time" id="fireEndTime_${plan.id}" value="${nowTimeStr}">
-                        </div>
-                        <button class="btn-success btn-sm" style="margin-top:14px; height:36px;" onclick="confirmFirePlan(${plan.id})">OK / Terminer</button>
-                        <button class="btn-danger btn-sm" style="margin-top:14px; height:36px;" onclick="deleteFirePlan(${plan.id})">Supprimer</button>
-                    </div>
-                `;
-                plannedContainer.appendChild(card);
-            });
-        }
-
-        const fireHistoryContainer = document.getElementById('fireHistoryList');
-        if (!fireHistoryContainer) return;
-
-        fireHistoryContainer.innerHTML = '';
-
-        fireHistory.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-        if (fireHistory.length === 0) {
-            fireHistoryContainer.innerHTML = '<li style="justify-content:center; color:#6c757d;">Aucun historique de vérification.</li>';
-        } else {
-            fireHistory.forEach(item => {
-                const li = document.createElement('li');
-                li.style.flexDirection = 'column';
-                li.style.alignItems = 'flex-start';
-
-                li.innerHTML = `
-                    <div style="width:100%; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                        <div>
-                            <strong>👥 ${item.team}</strong>
-                            <span class="badge badge-fire" style="margin-left:4px;">🧯 ${item.type}</span>
-                        </div>
-                        <span class="badge">Durée: ${formatTime(item.durationMin)} (${item.points} pts / pers)</span>
-                    </div>
-                    <div style="width:100%; display:flex; justify-content:space-between; margin-top:4px; font-size:0.85rem;">
-                        <span style="color:#6c757d;">📅 ${item.date} (${item.timeRange})</span>
-                        <span>☀ ${formatTime(item.normalMin)} Normale | 🚨 ${formatTime(item.criticalMin)} Critique</span>
-                    </div>
-                `;
-                fireHistoryContainer.appendChild(li);
-            });
-        }
-    }
-
-    function handleDragAndDrop(li, index) {
-        li.addEventListener('dragstart', (e) => {
-            draggedIndex = index;
-            li.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-        });
-
-        li.addEventListener('dragend', () => {
-            li.classList.remove('dragging');
-            draggedIndex = null;
-        });
-
-        li.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        });
-
-        li.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (draggedIndex !== null && draggedIndex !== index) {
-                const movedItem = queue.splice(draggedIndex, 1)[0];
-                queue.splice(index, 0, movedItem);
-                saveData();
-            }
-        });
-    }
-
-    function startTimerLoop() {
-        if (timerInterval) clearInterval(timerInterval);
-
-        timerInterval = setInterval(() => {
-            const now = Date.now();
-            let shouldPlayBeep = false;
-
-            activeSurveillances.forEach(item => {
-                if (item.alarmTargetTime) {
-                    const timerElem = document.getElementById(`timer_${item.id}`);
-                    const cardElem = document.getElementById(`activeCard_${item.id}`);
-
-                    const diffMs = item.alarmTargetTime - now;
-
-                    if (diffMs <= 0) {
-                        if (timerElem) {
-                            timerElem.className = 'timer-badge timer-expired';
-                            timerElem.innerHTML = '⚠️ TEMPS ÉCOULÉ !';
-                        }
-                        if (cardElem && !cardElem.classList.contains('card-alarm-active')) {
-                            cardElem.classList.add('card-alarm-active');
-                        }
-
-                        if (!item.alarmDismissed) {
-                            shouldPlayBeep = true;
-                        }
-                    } else {
-                        const totalSec = Math.floor(diffMs / 1000);
-                        const mins = String(Math.floor(totalSec / 60)).padStart(2, '0');
-                        const secs = String(totalSec % 60).padStart(2, '0');
-                        if (timerElem) {
-                            timerElem.innerHTML = `⏱️ Reste : ${mins}:${secs}`;
-                        }
-                    }
-                }
-            });
-
-            if (shouldPlayBeep) {
-                playBeepSound();
-            }
-        }, 1000);
-    }
-
-    function render() {
-        renderWaterLevel();
-
-        const sugg = getSuggestedWorker();
-        const suggestedElem = document.getElementById('suggestedWorker');
-        const reasonElem = document.getElementById('suggestionReason');
-        const btnSelect = document.getElementById('btnSelectSuggested');
-        const cardElem = document.getElementById('suggestionCard');
-
-        if (sugg && suggestedElem) {
-            if (!sugg.isFirstRoundFinished) {
-                cardElem.style.backgroundColor = "#f8f9fa";
-                cardElem.style.borderColor = "#adb5bd";
-                suggestedElem.innerText = "Pas de suggestion actuelle";
-                suggestedElem.style.fontSize = "1.2rem";
-                suggestedElem.style.color = "#6c757d";
-                reasonElem.innerHTML = "🔒 <strong>En attente :</strong> Tous les agents doivent effectuer au moins 1 surveillance avant d'activer les suggestions.";
-                if (btnSelect) btnSelect.style.display = "none";
-            } else if (sugg.noAvailable) {
-                cardElem.style.backgroundColor = "#fff3cd";
-                cardElem.style.borderColor = "#ffeeba";
-                suggestedElem.innerText = "Tous occupés";
-                suggestedElem.style.fontSize = "1.2rem";
-                suggestedElem.style.color = "#856404";
-                reasonElem.innerHTML = "Tous les agents sont actuellement en mission.";
-                if (btnSelect) btnSelect.style.display = "none";
-            } else {
-                cardElem.style.backgroundColor = "#e0f7fa";
-                cardElem.style.borderColor = "#00acc1";
-                suggestedElem.innerText = sugg.worker;
-                suggestedElem.style.fontSize = "1.5rem";
-                suggestedElem.style.color = "#00796b";
-                reasonElem.innerHTML = "Motif: Agent en fin de classement équitable (Possède le moins de temps total du travail)";
-                if (btnSelect) btnSelect.style.display = "inline-block";
-            }
-        }
-
-        const timeStatusElem = document.getElementById('timeStatus');
-        const nowHour = new Date().getHours();
-        if (isCriticalHour(nowHour)) {
-            timeStatusElem.innerText = '⚠ Statut actuel: Période Critique (Points x2)';
-            timeStatusElem.className = 'status-tag tag-critical';
-        } else {
-            timeStatusElem.innerText = '✅ Statut actuel: Période Normale (x1)';
-            timeStatusElem.className = 'status-tag tag-normal';
-        }
-
-        const activeContainer = document.getElementById('activeSurveillancesList');
-        activeContainer.innerHTML = '';
-
-        if (activeSurveillances.length === 0) {
-            activeContainer.innerHTML = '<div style="text-align:center; color:#6c757d; font-size:0.9rem;">Aucune surveillance générale en cours.</div>';
-        } else {
-            const nowTimeStr = new Date().toTimeString().substring(0, 5);
-            activeSurveillances.forEach(item => {
-                const card = document.createElement('div');
-                card.id = `activeCard_${item.id}`;
-
-                let isExpired = item.alarmTargetTime && (Date.now() >= item.alarmTargetTime);
-                let alarmClass = (isExpired && !item.alarmDismissed) ? 'card-alarm-active' : '';
-                card.className = `active-surveillance-card ${item.hasEtablissement ? 'etablissement-card' : ''} ${alarmClass}`;
-                
-                const teamDisplay = item.team && item.team.length > 1 ? item.team.join(', ') : item.worker;
-                
-                const endTimeInputHTML = item.hasEtablissement ? '' : `
-                    <div style="flex:1; min-width:120px;">
-                        <label style="font-size:0.75rem; font-weight:bold;">Heure de retour:</label>
-                        <input type="time" id="endTime_${item.id}" value="${nowTimeStr}">
-                    </div>
-                `;
-
-                let timerHTML = '';
-                if (item.alarmTargetTime) {
-                    timerHTML = `<div class="timer-badge" id="timer_${item.id}">⏱️ Calcul...</div>`;
-                }
-
-                let dismissBtnHTML = '';
-                if (isExpired && !item.alarmDismissed) {
-                    dismissBtnHTML = `<button class="btn-warning btn-sm" onclick="dismissAlarm(${item.id})">🔕 Arrêter l'alarme</button>`;
-                }
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                        <strong style="font-size:1.1rem; color:${item.hasEtablissement ? '#00796b' : 'var(--danger-color)'};">👥 ${teamDisplay}</strong>
-                        <div>
-                            <span class="badge badge-type">🔍 ${item.type}</span>
-                            <span class="badge badge-location">📍 ${item.location}</span>
-                            ${item.hasEtablissement ? '<span class="badge badge-extra">🔧 Établissement (+30m)</span>' : ''}
-                        </div>
-                    </div>
-                    <div style="margin-top:8px; font-size:0.85rem; color:#495057; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
-                        <span>⏱ Heure de départ: <strong>${item.startTime}</strong></span>
-                        ${timerHTML}
-                    </div>
-                    <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        ${endTimeInputHTML}
-                        ${dismissBtnHTML}
-                        <button class="btn-success btn-sm" style="margin-top:14px; height:36px; flex:1;" onclick="finishIntervention(${item.id})">✅ Enregistrer la fin</button>
-                    </div>
-                `;
-                activeContainer.appendChild(card);
-            });
-        }
-
-        if (document.getElementById('etablissementCheck').checked) {
-            renderTeamCheckboxes();
-        } else {
-            renderSingleWorkerSelect();
-        }
-
-        const queueList = document.getElementById('queueList');
-        queueList.innerHTML = '';
-        queue.forEach((worker, index) => {
-            const li = document.createElement('li');
-            li.draggable = true;
-            li.className = 'draggable-item';
-            
-            li.innerHTML = `
-                <div style="display:flex; align-items:center;">
-                    <span class="drag-handle" title="Glisser pour déplacer">☰</span>
-                    <span><strong>#${index + 1}</strong> - ${worker}</span>
-                </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <div class="move-btns">
-                        <button class="btn-secondary btn-sm" onclick="moveQueue(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.4"' : ''}>▲</button>
-                        <button class="btn-secondary btn-sm" onclick="moveQueue(${index}, 1)" ${index === queue.length - 1 ? 'disabled style="opacity:0.4"' : ''}>▼</button>
-                    </div>
-                    <button class="btn-danger btn-sm" onclick="removeWorkerFromQueue('${worker}')">Retirer</button>
-                </div>
-            `;
-
-            handleDragAndDrop(li, index);
-            queueList.appendChild(li);
-        });
-
-        renderFireSection();
-        renderVhfSection();
-
-        const sortedTotalTime = Object.keys(points).sort((a, b) => {
-            const equivA = getEquivalentNormalMinutes(a);
-            const equivB = getEquivalentNormalMinutes(b);
-            return equivB - equivA;
-        });
-        const totalTimeRankList = document.getElementById('totalTimeRankList');
-        totalTimeRankList.innerHTML = '';
-        sortedTotalTime.forEach((worker, index) => {
-            const equivMins = getEquivalentNormalMinutes(worker);
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span><strong>#${index + 1}</strong> ${worker}</span>
-                <span class="badge badge-total">⚖ Équivalent: ${formatTime(equivMins)}</span>
-            `;
-            totalTimeRankList.appendChild(li);
-        });
-
-        const sortedCritical = Object.keys(points).sort((a, b) => points[b].criticalMin - points[a].criticalMin);
-        const criticalRankList = document.getElementById('criticalRankList');
-        criticalRankList.innerHTML = '';
-        sortedCritical.forEach((worker, index) => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span><strong>#${index + 1}</strong> ${worker}</span>
-                <span class="badge badge-critical">🚨 ${formatTime(points[worker].criticalMin)}</span>
-            `;
-            criticalRankList.appendChild(li);
-        });
-
-        const sortedNormal = Object.keys(points).sort((a, b) => points[b].normalMin - points[a].normalMin);
-        const normalRankList = document.getElementById('normalRankList');
-        normalRankList.innerHTML = '';
-        sortedNormal.forEach((worker, index) => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span><strong>#${index + 1}</strong> ${worker}</span>
-                <span class="badge badge-normal">☀ ${formatTime(points[worker].normalMin)}</span>
-            `;
-            normalRankList.appendChild(li);
-        });
-
-        const sortedWorkers = Object.keys(points).sort((a, b) => points[b].points - points[a].points);
-        const statsList = document.getElementById('statsList');
-        const historyFilter = document.getElementById('historyFilter');
-        
-        statsList.innerHTML = '';
-        historyFilter.innerHTML = '<option value="ALL">Afficher tout l\'historique</option>';
-
-        sortedWorkers.forEach((worker, index) => {
-            const data = points[worker];
-            const equivMinutes = getEquivalentNormalMinutes(worker);
-
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <span class="rank-badge">${index + 1}</span>
-                        <strong>${worker}</strong>
-                    </div>
-                    <div class="no-print">
-                        <span class="badge" style="background:#e7f1ff; color:var(--primary-color)">${data.points} pts</span>
-                        <button class="btn-warning btn-sm" onclick="editWorkerStats('${worker}')">Modifier</button>
-                        <button class="btn-danger btn-sm" onclick="removeWorkerCompletely('${worker}')">Supprimer</button>
-                    </div>
-                </div>
-
-                <div style="width:100%; font-size:0.85rem; display:flex; justify-content:space-between; margin-top:6px; flex-wrap:wrap; gap:4px;">
-                    <span>⚖️ <strong>Équivalent Total (Critique x2):</strong> ${formatTime(equivMinutes)}</span>
-                    <span>☀ Normal: ${formatTime(data.normalMin)}</span>
-                    <span>🚨 Critique: ${formatTime(data.criticalMin)}</span>
-                </div>
-            `;
-            statsList.appendChild(li);
-
-            const opt = document.createElement('option');
-            opt.value = worker;
-            opt.innerText = `Historique: ${worker}`;
-            historyFilter.appendChild(opt);
-        });
-
-        updateComparisonChart();
-        renderHistory();
-        startTimerLoop();
-    }
-
-    setCurrentTimeDefaults();
-    render();
-</script>
-
-</body>
-</html>
+const $=i=>document.getElementById(i),E=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),P=n=>String(n).padStart(2,'0');
+const G=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}};
+const DW=['Benyoub','Boumedine','Chalal','Dahmani','Fredj','Talbi'],VEH=['Ambulance Hyundai','Ambulance Mercedes','Nafcco','Trivalent','Chinetti','Motopompe','GMV 1','GMV 2','21P3 A','21P3 B'],Z=()=>({normalMin:0,criticalMin:0,points:0});
+const K={queue:'shift_queue_v25',points:'shift_points_v25',active:'shift_active_v25',history:'shift_history_v25',firePlans:'shift_fire_plans_v25',fireHist:'shift_fire_history_v25',vhfA:'shift_vhf_assignments_v25',water:'shift_water_level_v25',waterH:'shift_water_history_v25',refuels:'shift_refuel_v25',expiry:'shift_expiry_v25'};
+let queue=G(K.queue,[...DW]),points=G(K.points,Object.fromEntries(DW.map(w=>[w,Z()]))),active=G(K.active,[]),history=G(K.history,[]),firePlans=G(K.firePlans,[]),fireHist=G(K.fireHist,[]),vhfTotal=parseInt(localStorage.getItem('shift_vhf_total_v25'))||5,vhfA=G(K.vhfA,[]),water=G(K.water,{value:'',time:''}),waterH=G(K.waterH,[]),refuels=G(K.refuels,[]),expiry=G(K.expiry,[]),chart=null,dragI=null,tmrI=null;
+function saveData(){const S={queue,points,active,history,firePlans,fireHist,vhfA,water,waterH,refuels,expiry};for(const k in S)localStorage.setItem(K[k],JSON.stringify(S[k]));localStorage.setItem('shift_vhf_total_v25',vhfTotal);render()}
+const tg=id=>{const e=$(id);e.style.display=(e.style.display==='block')?'none':'block'};
+const nowT=()=>new Date().toTimeString().substring(0,5),fmt=m=>`${P(Math.floor(m/60))}h: ${P(m%60)}min`,isCrit=h=>(h>=16&&h<19)||(h>=0&&h<7),dstr=d=>`${d.getFullYear()}-${P(d.getMonth()+1)}-${P(d.getDate())}`;
+const equiv=w=>points[w]?points[w].normalMin+points[w].criticalMin*2:0,opts=(a,s)=>a.map(w=>`<option value="${E(w)}"${w===s?' selected':''}>${E(w)}</option>`).join('');
+function split(s,e){let n=0,c=0;const t=new Date(s.getTime());while(t<e){isCrit(t.getHours())?c++:n++;t.setMinutes(t.getMinutes()+1)}return[n,c]}
+function addPts(team,n,c){const pt=n/60+c/60*2;team.forEach(w=>{if(!points[w])points[w]=Z();points[w].normalMin+=n;points[w].criticalMin+=c;points[w].points+=parseFloat(pt.toFixed(2))});return pt}
+function busy(){const b=new Set(),now=new Date();active.forEach(a=>(a.team&&a.team.length?a.team:[a.worker]).forEach(w=>b.add(w)));firePlans.forEach(p=>{if(p.date&&p.startTime&&now>=new Date(`${p.date}T${p.startTime}`)&&p.team)p.team.forEach(w=>b.add(w))});return b}
+function etab7(w){const l=Date.now()-6048e5;return history.filter(h=>h.hasEtablissement&&(h.timestamp||0)>=l&&h.worker&&h.worker.includes(w)).length}
+function setDefaults(){const t=nowT();$('startTime').value=t;$('fStart').value=t;$('fDate').value=dstr(new Date())}
+/* eau */
+function saveWater(){const v=parseFloat($('waterLevelInput').value);if(isNaN(v))return alert("Veuillez saisir un chiffre valide pour le niveau d'eau.");const n=new Date(),t=`${n.toLocaleDateString('fr-FR')} à ${nowT()}`;water={value:v+' m',time:t};waterH.unshift({id:Date.now(),value:v+' m',time:t});saveData();$('waterLevelInput').value=''}
+function clearWater(){if(confirm("Voulez-vous vraiment effacer l'historique des niveaux d'eau ?")){waterH=[];saveData()}}
+/* agents */
+function addWorker(){const n=$('workerInput').value.trim();if(n&&!queue.includes(n)){queue.push(n);if(!(n in points))points[n]=Z();$('workerInput').value='';saveData()}}
+function moveQ(i,d){const j=i+d;if(j>=0&&j<queue.length){[queue[i],queue[j]]=[queue[j],queue[i]];saveData()}}
+function rmQ(n){queue=queue.filter(w=>w!==n);saveData()}
+function rmWorker(n){if(confirm(`Voulez-vous vraiment supprimer l'agent (${n}) ?`)){queue=queue.filter(w=>w!==n);delete points[n];saveData()}}
+function editStats(n){const c=points[n],nh=prompt(`Heures normales pour (${n}):`,Math.floor(c.normalMin/60)),nm=prompt(`Minutes normales pour (${n}):`,c.normalMin%60),ch=prompt(`Heures critiques pour (${n}):`,Math.floor(c.criticalMin/60)),cm=prompt(`Minutes critiques pour (${n}):`,c.criticalMin%60);
+if(nh!==null&&ch!==null){const a=(parseInt(nh)||0)*60+(parseInt(nm)||0),b=(parseInt(ch)||0)*60+(parseInt(cm)||0);points[n]={normalMin:a,criticalMin:b,points:parseFloat((a/60+b/30).toFixed(2))};saveData()}}
+function beep(){try{const C=window.AudioContext||window.webkitAudioContext,x=new C(),o=x.createOscillator(),g=x.createGain();o.type='sawtooth';o.frequency.setValueAtTime(880,x.currentTime);o.frequency.exponentialRampToValueAtTime(440,x.currentTime+.5);g.gain.setValueAtTime(.3,x.currentTime);g.gain.exponentialRampToValueAtTime(.01,x.currentTime+.5);o.connect(g);g.connect(x.destination);o.start();o.stop(x.currentTime+.5)}catch(e){}}
+/* surveillance */
+function toggleEtab(){const on=$('etCk').checked;$('typeBox').style.opacity=on?.4:1;$('sType').disabled=on;$('oneBox').style.display=on?'none':'block';$('teamContainer').style.display=on?'block':'none';$('startBtn').innerHTML=on?"🛠️ Mise en place d'un établissement":'🚀 Démarrer la surveillance';on?renderTeam():renderOne()}
+function renderOne(){const s=$('singleWorkerSelect'),cur=s.value,b=busy(),av=queue.filter(w=>!b.has(w));s.disabled=!av.length;s.innerHTML=av.length?opts(av,cur):'<option value="">-- Aucun agent disponible actuellement --</option>'}
+function renderTeam(){const t=$('teamCheckboxes'),b=busy(),av=Object.keys(points).filter(w=>!b.has(w));if(!av.length){t.innerHTML='<div style="font-size:.85rem;color:#dc3545;font-weight:700">Aucun agent disponible (Tous les agents sont occupés).</div>';return}
+const ck=new Set([...document.querySelectorAll('.tcb:checked')].map(c=>c.value));av.sort((a,b)=>etab7(a)-etab7(b));t.innerHTML=av.map(w=>`<label class="chip"><div style="display:flex;align-items:center;gap:5px"><input type="checkbox" class="tcb" value="${E(w)}"${ck.has(w)?' checked':''}><span><strong>${E(w)}</strong></span></div><span class="badge" style="font-size:.7rem;background:#e1bee7;color:#4a148c">${etab7(w)} Étab. / 7j</span></label>`).join('')}
+function startInt(){const st=$('startTime').value,et=$('etCk').checked,al=parseInt($('alarmIn').value)||0;if(!st)return alert("Veuillez sélectionner l'heure de départ.");let team=[];
+if(et){team=[...document.querySelectorAll('.tcb:checked')].map(c=>c.value);if(!team.length)return alert("Veuillez sélectionner au moins un agent pour l'établissement.")}else{const w=$('singleWorkerSelect').value;if(!w)return alert('Aucun agent disponible pour cette surveillance.');team.push(w)}
+const b=busy();for(const w of team)if(b.has(w))return alert(`⚠️ L'agent (${w}) est actuellement occupé ! Veuillez sélectionner un autre agent disponible.`);
+active.push({id:Date.now(),worker:team[0],team,type:et?'Établissement':$('sType').value,location:$('sLoc').value,hasEtablissement:et,startTime:st,startDateStr:new Date().toDateString(),alarmTargetTime:al>0?Date.now()+al*6e4:null,alarmDismissed:false});
+team.forEach(w=>{queue=queue.filter(q=>q!==w);queue.push(w)});$('etCk').checked=false;$('alarmIn').value='';toggleEtab();saveData();setDefaults()}
+function dismissAlarm(id){const a=active.find(s=>s.id===id);if(a){a.alarmDismissed=true;saveData()}}
+function finishInt(id){const i=active.findIndex(a=>a.id===id);if(i<0)return;const it=active[i],sd=new Date(it.startDateStr+' '+it.startTime);let n=0,c=0,dur,ds;
+if(it.hasEtablissement){n=30;dur=30;ds=`${dstr(sd)} | Heure de départ: ${it.startTime}`}else{const ev=$('endTime_'+id)?$('endTime_'+id).value:'';if(!ev)return alert("Veuillez sélectionner l'heure de retour.");let ed=new Date(it.startDateStr+' '+ev);if(ed<=sd)ed.setDate(ed.getDate()+1);dur=Math.round((ed-sd)/6e4);[n,c]=split(sd,ed);ds=`${dstr(sd)} | ${it.startTime} - ${ev}`}
+const team=it.team&&it.team.length?it.team:[it.worker],pt=addPts(team,n,c);history.push({worker:team.join(', '),type:it.type,location:it.location,hasEtablissement:it.hasEtablissement,durationMin:dur,normalMin:n,criticalMin:c,points:pt.toFixed(2),date:ds,timestamp:sd.getTime()});active.splice(i,1);saveData()}
+/* suggestion */
+function suggest(){const ws=Object.keys(points);if(!ws.length)return null;if(!ws.every(w=>history.some(h=>h.worker&&h.worker.includes(w))||fireHist.some(f=>f.team&&f.team.includes(w))))return{first:false};
+const b=busy(),av=ws.filter(w=>!b.has(w));if(!av.length)return{first:true,none:true};av.sort((a,c)=>equiv(a)-equiv(c)||points[a].normalMin-points[c].normalMin);return{first:true,worker:av[0]}}
+function pickSuggested(){const s=suggest();if(s&&s.worker){queue=queue.filter(w=>w!==s.worker);queue.unshift(s.worker);saveData()}}
+/* réseau & extincteurs */
+function addFire(){const a1=$('fA1').value,a2=$('fA2').value,d=$('fDate').value,s=$('fStart').value;if(!a1)return alert('Veuillez choisir au moins le premier agent disponible.');if(a1===a2)return alert('Veuillez choisir deux agents différents.');if(!d||!s)return alert("Veuillez spécifier la date et l'heure de début.");
+const team=a2?[a1,a2]:[a1];if(new Date(`${d}T${s}`)<=new Date()){const b=busy();for(const w of team)if(b.has(w))return alert(`⚠️ L'agent (${w}) est actuellement en activité ! Impossible de lui assigner cette tâche.`)}
+firePlans.push({id:Date.now(),team,type:$('fType').value,date:d,startTime:s});saveData()}
+function delFire(id){firePlans=firePlans.filter(p=>p.id!==id);saveData()}
+function okFire(id){const i=firePlans.findIndex(p=>p.id===id);if(i<0)return;const p=firePlans[i],ev=$('fEnd_'+id).value;if(!ev)return alert("Veuillez indiquer l'heure de fin de vérification.");
+const sd=new Date(p.date+'T'+p.startTime);let ed=new Date(p.date+'T'+ev);if(ed<=sd)ed.setDate(ed.getDate()+1);const[n,c]=split(sd,ed),pt=addPts(p.team,n,c);
+fireHist.push({id:Date.now(),team:p.team.join(', '),type:p.type,date:p.date,timeRange:`${p.startTime} - ${ev}`,durationMin:Math.round((ed-sd)/6e4),normalMin:n,criticalMin:c,points:pt.toFixed(2),timestamp:sd.getTime()});firePlans.splice(i,1);saveData()}
+/* VHF */
+function setVhfTotal(v){v=parseInt(v);if(v&&v>=1){vhfTotal=v;saveData()}}
+function assignVhf(){const a=$('vAgent').value,z=$('vZone').value.trim()||'Zone non spécifiée';if(!a)return alert('Veuillez choisir un agent.');if(vhfA.length>=vhfTotal)return alert('⚠️ Tous les appareils VHF sont actuellement attribués !');if(vhfA.find(v=>v.agent===a))return alert(`⚠️ L'agent (${a}) détient déjà un appareil VHF !`);
+vhfA.push({id:Date.now(),agent:a,zone:z,time:nowT()});$('vZone').value='';saveData()}
+function retVhf(id){vhfA=vhfA.filter(v=>v.id!==id);saveData()}
+/* appoint gasoil / huile */
+function addRefuel(){const ag=$('gAgent').value,v=$('gVeh').value,km=$('gKm').value.trim();if(!ag)return alert("Veuillez choisir l'agent.");if(!v)return alert('Le nom du véhicule est obligatoire.');
+const n=new Date();refuels.unshift({id:Date.now(),agent:ag,type:$('gType').value,vehicle:v,km:km?parseInt(km):null,date:n.toLocaleDateString('fr-FR'),time:nowT(),timestamp:n.getTime()});$('gKm').value='';saveData()}
+function delRefuel(id){if(confirm('Supprimer cet enregistrement ?')){refuels=refuels.filter(r=>r.id!==id);saveData()}}
+/* validité */
+const dLeft=d=>{const t=new Date();t.setHours(0,0,0,0);return Math.round((new Date(d+'T00:00:00')-t)/864e5)},dTxt=d=>d<0?`expiré depuis ${-d} j`:d===0?"expire AUJOURD'HUI":`expire dans ${d} j`;
+function openExp(){const m=$('expiryModuleSection');m.style.display='block';m.scrollIntoView({behavior:'smooth',block:'start'})}
+function addExp(){const n=$('eName').value.trim(),d=$('eDate').value;if(!n||!d)return alert("Veuillez renseigner la désignation et la date d'expiration.");expiry.push({id:Date.now(),name:n,cat:$('eCat').value,veh:$('eVeh').value,date:d,remind:Math.max(0,parseInt($('eRem').value)||0)});$('eName').value='';$('eDate').value='';saveData()}
+function renewExp(id){const e=expiry.find(x=>x.id===id);if(!e)return;const v=prompt("Nouvelle date d'expiration (AAAA-MM-JJ) :",e.date);if(v===null)return;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){e.date=v;saveData()}else alert('Format invalide. Utilisez AAAA-MM-JJ.')}
+function delExp(id){if(confirm('Supprimer cet élément ?')){expiry=expiry.filter(e=>e.id!==id);saveData()}}
+function renderBanner(){const b=$('expiryBanner'),al=expiry.map(e=>({e,d:dLeft(e.date)})).filter(x=>x.d<=x.e.remind).sort((a,c)=>a.d-c.d);if(!al.length){b.style.display='none';return}b.style.display='block';
+b.innerHTML=`<div style="font-size:1rem">🚨 ALERTE VALIDITÉ — ${al.length} élément(s) à renouveler</div>`+al.map(x=>`<div>${x.d<0?'⛔':'⚠️'} ${E(x.e.name)}${x.e.veh?' ('+E(x.e.veh)+')':''} — ${dTxt(x.d)} · ${x.e.date}</div>`).join('')}
+/* rendu des sections */
+const li=(h,col)=>`<li${col?' style="flex-direction:column;align-items:flex-start"':''}>${h}</li>`,row=(a,b)=>`<div style="width:100%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">${a}${b}</div>`;
+function renderSections(){const all=Object.keys(points),b=busy(),av=all.filter(w=>!b.has(w));
+const a1=$('fA1'),a2=$('fA2'),c1=a1.value,c2=a2.value;a1.innerHTML=av.length?opts(av,c1):'<option value="">-- Aucun agent disponible --</option>';a1.disabled=a2.disabled=!av.length;a2.innerHTML='<option value="">-- Seul (1 agent) --</option>'+opts(av,c2);
+const nt=nowT();$('fPlans').innerHTML=firePlans.length?firePlans.map(p=>`<div class="fplan"><div class="fl sb"><strong style="font-size:1.05rem;color:var(--fire)">👥 ${p.team.join(' & ')}</strong><span class="badge bfi">🧯 ${p.type}</span></div><div style="margin-top:6px;font-size:.85rem;color:#495057">📅 Date : <strong>${p.date}</strong> | ⏱️ Début : <strong>${p.startTime}</strong></div><div class="fl" style="margin-top:10px"><div style="flex:1;min-width:120px"><label style="font-size:.75rem;font-weight:700">Heure de fin :</label><input type="time" id="fEnd_${p.id}" value="${nt}"></div><button class="bs sm" style="margin-top:14px;height:36px" onclick="okFire(${p.id})">OK / Terminer</button><button class="bd sm" style="margin-top:14px;height:36px" onclick="delFire(${p.id})">Supprimer</button></div></div>`).join(''):'<div class="em">Aucune vérification planifiée.</div>';
+fireHist.sort((a,c)=>(a.timestamp||0)-(c.timestamp||0));$('fHist').innerHTML=fireHist.length?fireHist.map(i=>li(row(`<div><strong>👥 ${i.team}</strong><span class="badge bfi" style="margin-left:4px">🧯 ${i.type}</span></div>`,`<span class="badge">Durée: ${fmt(i.durationMin)} (${i.points} pts / pers)</span>`)+`<div style="width:100%;display:flex;justify-content:space-between;margin-top:4px;font-size:.85rem"><span style="color:#6c757d">📅 ${i.date} (${i.timeRange})</span><span>☀ ${fmt(i.normalMin)} Normale | 🚨 ${fmt(i.criticalMin)} Critique</span></div>`,1)).join(''):'<li style="justify-content:center;color:#6c757d">Aucun historique de vérification.</li>';
+const vs=$('vAgent'),cv=vs.value;vs.innerHTML=all.map(w=>`<option value="${E(w)}">${E(w)}${vhfA.some(v=>v.agent===w)?' (Détient déjà un VHF)':''}</option>`).join('');if(cv)vs.value=cv;
+$('vTotal').value=vhfTotal;$('vhfBtn').innerHTML=`📻 Radios VHF (${Math.max(0,vhfTotal-vhfA.length)}/${vhfTotal} disponibles)`;
+$('vList').innerHTML=vhfA.length?vhfA.map(i=>`<div style="background:#f8f0fc;border:1px solid #ce93d8;padding:10px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><div><strong style="color:var(--vhf);font-size:1.05rem">📻 ${E(i.agent)}</strong><span class="badge blo" style="margin-left:4px">📍 ${E(i.zone)}</span><div style="font-size:.8rem;color:#6c757d;margin-top:2px">⏱ Remis à : ${i.time}</div></div><button class="bs sm" onclick="retVhf(${i.id})">✅ Récupérer le VHF</button></div>`).join(''):'<div class="em">Aucun appareil VHF n\'est actuellement attribué.</div>';
+const ga=$('gAgent'),cg=ga.value;ga.innerHTML=opts(all);if(cg&&points[cg])ga.value=cg;if(!$('gVeh').options.length){$('gVeh').innerHTML=opts(VEH);$('eVeh').innerHTML='<option value="">-- Général / Aucun --</option>'+opts(VEH)}
+$('gList').innerHTML=refuels.length?refuels.map(r=>li(row(`<div><strong>🚒 ${E(r.vehicle)}</strong><span class="badge bga" style="margin-left:4px">⛽ ${E(r.type)}</span>${r.km!=null?`<span class="badge" style="margin-left:4px">${r.km} km</span>`:''}</div>`,`<button class="bd sm" onclick="delRefuel(${r.id})">✕</button>`)+`<div style="font-size:.82rem;color:#6c757d;margin-top:4px">👤 ${E(r.agent)} · 📅 ${r.date} à ${r.time}</div>`,1)).join(''):'<li style="justify-content:center;color:#6c757d">Aucun appoint enregistré.</li>';
+const es=expiry.map(e=>({e,d:dLeft(e.date)})).sort((a,c)=>a.d-c.d);$('eList').innerHTML=es.length?es.map(({e,d})=>{const w=d<0?'d':d<=e.remind?'w':'',col=d<0?'var(--da)':d<=e.remind?'var(--wa)':'var(--ok)';return`<div class="ec ${w}"><div class="fl sb"><strong>${E(e.name)}</strong><span class="badge bex">${E(e.cat)}</span></div><div style="font-size:.85rem;margin-top:4px">${e.veh?'🚒 '+E(e.veh)+' · ':''}📅 ${e.date} · <strong style="color:${col}">${dTxt(d)}</strong> <span style="color:#6c757d">(rappel ${e.remind} j)</span></div><div style="margin-top:6px;display:flex;gap:6px"><button class="bs sm" onclick="renewExp(${e.id})">🔄 Renouveler</button><button class="bd sm" onclick="delExp(${e.id})">Supprimer</button></div></div>`}).join(''):'<div class="em">Aucun élément suivi.</div>';
+const nb=es.filter(x=>x.d<=x.e.remind).length;$('expBtn').innerHTML=nb?`📅 Dates de validité (${nb} ⚠️)`:'📅 Dates de validité';renderBanner()}
+function renderHist(){const f=$('hFilter').value,l=$('hList');history.sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));const h=f==='ALL'?history:history.filter(x=>x.worker.includes(f));
+l.innerHTML=h.length?h.map(i=>li(row(`<div><strong>👥 ${E(i.worker)}</strong><span class="badge bty" style="margin-left:4px">🔍 ${E(i.type||'N/A')}</span><span class="badge blo" style="margin-left:4px">📍 ${E(i.location||'N/A')}</span>${i.hasEtablissement?'<span class="badge bex" style="margin-left:4px">🔧 Établissement (+30m)</span>':''}</div>`,`<span class="badge">Durée: ${fmt(i.durationMin)} (${i.points} pts / pers)</span>`)+`<div style="width:100%;display:flex;justify-content:space-between;margin-top:4px;font-size:.85rem"><span style="color:#6c757d">📅 ${i.date}</span><span>☀ ${fmt(i.normalMin)} Normale | 🚨 ${fmt(i.criticalMin)} Critique</span></div>`,1)).join(''):'<li style="justify-content:center;color:#6c757d">Aucun historique enregistré</li>'}
+function drawChart(){const L=Object.keys(points),em={},fm={};L.forEach(w=>{em[w]=0;fm[w]=0});history.forEach(i=>{if(i.hasEtablissement&&i.worker)L.forEach(w=>{if(i.worker.includes(w))em[w]+=(i.durationMin||30)})});fireHist.forEach(i=>{if(i.team)L.forEach(w=>{if(i.team.includes(w))fm[w]+=(i.durationMin||0)})});
+const H=f=>L.map(w=>(f(w)/60).toFixed(2));if(chart)chart.destroy();
+chart=new Chart($('chart').getContext('2d'),{type:'bar',data:{labels:L,datasets:[{label:'Heures Normales',data:H(w=>points[w].normalMin),backgroundColor:'#198754'},{label:'Heures Critiques (x2)',data:H(w=>points[w].criticalMin),backgroundColor:'#000'},{label:'Établissement',data:H(w=>em[w]),backgroundColor:'#9c27b0'},{label:'Vérification réseau',data:H(w=>fm[w]),backgroundColor:'#d32f2f'},{label:'Heures Équitable',data:L.map(w=>Math.max(0,equiv(w)/60-(points[w].normalMin+points[w].criticalMin)/60).toFixed(2)),backgroundColor:'rgba(14,165,233,.25)',borderColor:'rgba(14,165,233,.6)',borderWidth:1}]},
+options:{responsive:true,maintainAspectRatio:false,plugins:{tooltip:{callbacks:{label:c=>c.datasetIndex===4?`Heures Équitable: ${fmt(equiv(c.label))}`:`${c.dataset.label}: ${fmt(Math.round((c.raw||0)*60))}`}}},scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'Temps en heures (h)'}}}}})}
+function exportPDF(){const b=$('pdfBtn'),n=document.querySelectorAll('.np');b.innerText='⏳ Génération du PDF...';n.forEach(e=>e.style.display='none');const done=()=>{n.forEach(e=>e.style.display='');b.innerText='📄 Télécharger le rapport (PDF)';render()};
+html2pdf().set({margin:[10,10,10,10],filename:'Rapport_Surveillances.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from($('reportArea')).save().then(done).catch(e=>{console.error(e);window.print();done()})}
+function dragDrop(l,i){l.addEventListener('dragstart',e=>{dragI=i;l.classList.add('dragging');e.dataTransfer.effectAllowed='move'});l.addEventListener('dragend',()=>{l.classList.remove('dragging');dragI=null});l.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move'});l.addEventListener('drop',e=>{e.preventDefault();if(dragI!==null&&dragI!==i){queue.splice(i,0,queue.splice(dragI,1)[0]);saveData()}})}
+function timerLoop(){clearInterval(tmrI);tmrI=setInterval(()=>{const now=Date.now();let bp=false;active.forEach(a=>{if(!a.alarmTargetTime)return;const t=$('timer_'+a.id),c=$('activeCard_'+a.id),d=a.alarmTargetTime-now;
+if(d<=0){if(t){t.className='tmr tx';t.innerHTML='⚠️ TEMPS ÉCOULÉ !'}if(c)c.classList.add('alarm');if(!a.alarmDismissed)bp=true}else if(t){const s=Math.floor(d/1000);t.innerHTML=`⏱️ Reste : ${P(Math.floor(s/60))}:${P(s%60)}`}});if(bp)beep()},1000)}
+function render(){
+$('waterLevelDisplay').innerText=water.value||'Non renseigné';$('waterLevelDisplay').style.background=water.value?'#0284c7':'#6c757d';$('waterLevelTime').innerText=water.time?`Dernière mise à jour : ${water.time}`:'';
+$('waterHistoryList').innerHTML=waterH.length?waterH.map(i=>`<li style="font-size:.8rem;padding:4px 0"><strong>💧 ${i.value}</strong><span style="color:#64748b;font-size:.75rem">📅 ${i.time}</span></li>`).join(''):'<li style="font-size:.75rem;color:#6c757d;justify-content:center">Aucun historique enregistré</li>';
+const s=suggest(),sc=$('suggestionCard'),sn=$('suggestedWorker'),sr=$('suggestionReason'),sb=$('btnSel');
+if(s){if(!s.first){sc.style.background='#f8f9fa';sc.style.borderColor='#adb5bd';sn.innerText='Pas de suggestion actuelle';sn.style.fontSize='1.2rem';sn.style.color='#6c757d';sr.innerHTML="🔒 <strong>En attente :</strong> Tous les agents doivent effectuer au moins 1 surveillance avant d'activer les suggestions.";sb.style.display='none'}
+else if(s.none){sc.style.background='#fff3cd';sc.style.borderColor='#ffeeba';sn.innerText='Tous occupés';sn.style.fontSize='1.2rem';sn.style.color='#856404';sr.innerHTML='Tous les agents sont actuellement en mission.';sb.style.display='none'}
+else{sc.style.background='#e0f7fa';sc.style.borderColor='#00acc1';sn.innerText=s.worker;sn.style.fontSize='1.5rem';sn.style.color='#00796b';sr.innerHTML='Motif: Agent en fin de classement équitable (Possède le moins de temps total du travail)';sb.style.display='inline-block'}}
+const cr=isCrit(new Date().getHours());$('timeStatus').innerText=cr?'⚠ Statut actuel: Période Critique (Points x2)':'✅ Statut actuel: Période Normale (x1)';$('timeStatus').className='st '+(cr?'tc':'tn');
+const nt=nowT();$('activeList').innerHTML=active.length?active.map(it=>{const ex=it.alarmTargetTime&&Date.now()>=it.alarmTargetTime,al=ex&&!it.alarmDismissed?'alarm':'',td=it.team&&it.team.length>1?it.team.join(', '):it.worker;
+return`<div id="activeCard_${it.id}" class="act ${it.hasEtablissement?'etab':''} ${al}"><div class="fl sb"><strong style="font-size:1.1rem;color:${it.hasEtablissement?'#00796b':'var(--da)'}">👥 ${E(td)}</strong><div><span class="badge bty">🔍 ${E(it.type)}</span> <span class="badge blo">📍 ${E(it.location)}</span> ${it.hasEtablissement?'<span class="badge bex">🔧 Établissement (+30m)</span>':''}</div></div>
+<div class="fl sb" style="margin-top:8px;font-size:.85rem;color:#495057"><span>⏱ Heure de départ: <strong>${it.startTime}</strong></span>${it.alarmTargetTime?`<div class="tmr" id="timer_${it.id}">⏱️ Calcul...</div>`:''}</div>
+<div class="fl" style="margin-top:10px">${it.hasEtablissement?'':`<div style="flex:1;min-width:120px"><label style="font-size:.75rem;font-weight:700">Heure de retour:</label><input type="time" id="endTime_${it.id}" value="${nt}"></div>`}${ex&&!it.alarmDismissed?`<button class="bw sm" onclick="dismissAlarm(${it.id})">🔕 Arrêter l'alarme</button>`:''}<button class="bs sm" style="margin-top:14px;height:36px;flex:1" onclick="finishInt(${it.id})">✅ Enregistrer la fin</button></div></div>`}).join(''):'<div class="em" style="font-size:.9rem">Aucune surveillance générale en cours.</div>';
+$('etCk').checked?renderTeam():renderOne();
+const q=$('queueList');q.innerHTML='';queue.forEach((w,i)=>{const l=document.createElement('li');l.draggable=true;l.className='dr';l.innerHTML=`<div style="display:flex;align-items:center"><span class="hd" title="Glisser pour déplacer">☰</span><span><strong>#${i+1}</strong> - ${E(w)}</span></div><div style="display:flex;gap:6px;align-items:center"><div class="mv"><button class="bz sm" onclick="moveQ(${i},-1)"${i===0?' disabled style="opacity:.4"':''}>▲</button><button class="bz sm" onclick="moveQ(${i},1)"${i===queue.length-1?' disabled style="opacity:.4"':''}>▼</button></div><button class="bd sm" data-w="${E(w)}" onclick="rmQ(this.dataset.w)">Retirer</button></div>`;dragDrop(l,i);q.appendChild(l)});
+renderSections();
+const ws=Object.keys(points),rk=f=>[...ws].sort((a,b)=>f(b)-f(a));
+$('eqList').innerHTML=rk(equiv).map((w,i)=>`<li><span><strong>#${i+1}</strong> ${E(w)}</span><span class="badge bto">⚖ Équivalent: ${fmt(equiv(w))}</span></li>`).join('');
+$('crList').innerHTML=rk(w=>points[w].criticalMin).map((w,i)=>`<li><span><strong>#${i+1}</strong> ${E(w)}</span><span class="badge bcr">🚨 ${fmt(points[w].criticalMin)}</span></li>`).join('');
+$('noList').innerHTML=rk(w=>points[w].normalMin).map((w,i)=>`<li><span><strong>#${i+1}</strong> ${E(w)}</span><span class="badge bno">☀ ${fmt(points[w].normalMin)}</span></li>`).join('');
+const hf=$('hFilter'),hv=hf.value,sw=rk(w=>points[w].points);hf.innerHTML='<option value="ALL">Afficher tout l\'historique</option>'+sw.map(w=>`<option value="${E(w)}">Historique: ${E(w)}</option>`).join('');hf.value=hv&&[...hf.options].some(o=>o.value===hv)?hv:'ALL';
+$('statsList').innerHTML=sw.map((w,i)=>{const d=points[w];return`<li><div style="width:100%;display:flex;justify-content:space-between;align-items:center"><div><span class="rk">${i+1}</span><strong>${E(w)}</strong></div><div class="np"><span class="badge" style="background:#e7f1ff;color:var(--p)">${d.points} pts</span> <button class="bw sm" data-w="${E(w)}" onclick="editStats(this.dataset.w)">Modifier</button> <button class="bd sm" data-w="${E(w)}" onclick="rmWorker(this.dataset.w)">Supprimer</button></div></div><div style="width:100%;font-size:.85rem;display:flex;justify-content:space-between;margin-top:6px;flex-wrap:wrap;gap:4px"><span>⚖️ <strong>Équivalent Total (Critique x2):</strong> ${fmt(equiv(w))}</span><span>☀ Normal: ${fmt(d.normalMin)}</span><span>🚨 Critique: ${fmt(d.criticalMin)}</span></div></li>`}).join('');
+drawChart();renderHist();timerLoop()}
+function buildBackup(){const n=new Date(),T=(t,h,r)=>`<h3 style="margin:16px 0 6px;color:#0d6efd">${t}</h3>`+(r.length?`<table style="width:100%;border-collapse:collapse;font-size:11px"><tr>${h.map(x=>`<th style="border:1px solid #999;padding:3px;background:#eee">${x}</th>`).join('')}</tr>${r.map(c=>`<tr style="page-break-inside:avoid">${c.map(x=>`<td style="border:1px solid #bbb;padding:3px">${E(x)}</td>`).join('')}</tr>`).join('')}</table>`:'<div style="font-size:11px;color:#777">Aucune donnée.</div>');
+const hs=[...history].sort((a,b)=>(a.timestamp||0)-(b.timestamp||0)),fs=[...fireHist].sort((a,b)=>(a.timestamp||0)-(b.timestamp||0));
+return`<div style="font-family:Arial,sans-serif;padding:10px;color:#000"><h2 style="text-align:center;margin:0">Sauvegarde — Système de Gestion du Travail EQUIPE A</h2><div style="text-align:center;font-size:12px;margin-bottom:6px">Généré le ${n.toLocaleDateString('fr-FR')} à ${nowT()}</div>`+
+T('Bilan cumulatif',['Agent','Normal','Critique','Équivalent','Points'],Object.keys(points).sort((a,b)=>points[b].points-points[a].points).map(w=>[w,fmt(points[w].normalMin),fmt(points[w].criticalMin),fmt(equiv(w)),points[w].points.toFixed(2)]))+
+T('Historique des surveillances',['Agent(s)','Type','Lieu','Date / Heure','Durée','Normale','Critique','Pts'],hs.map(i=>[i.worker,i.type||'',i.location||'',i.date,fmt(i.durationMin),fmt(i.normalMin),fmt(i.criticalMin),i.points]))+
+T('Vérifications Réseau & Extincteurs',['Agent(s)','Type','Date (Heure)','Durée','Normale','Critique','Pts'],fs.map(i=>[i.team,i.type,`${i.date} (${i.timeRange})`,fmt(i.durationMin),fmt(i.normalMin),fmt(i.criticalMin),i.points]))+
+T('Appoints Gasoil / Huile moteur',['Date','Véhicule','Type','Km','Agent'],refuels.map(r=>[`${r.date} ${r.time}`,r.vehicle,r.type,r.km!=null?r.km:'-',r.agent]))+
+T("Niveaux d'eau du bac",['Niveau','Date'],waterH.map(i=>[i.value,i.time]))+
+T('Dates de validité',['Désignation','Catégorie','Véhicule','Expiration','État'],expiry.map(e=>[e.name,e.cat,e.veh||'-',e.date,dTxt(dLeft(e.date))]))+'</div>'}
+async function resetAll(){if(!confirm('Attention : un PDF de sauvegarde (historique complet) sera téléchargé, puis toutes les données seront supprimées définitivement ! Continuer ?'))return;
+const n=new Date(),box=document.createElement('div');box.style.cssText='position:fixed;top:0;left:0;width:720px;background:#fff;z-index:-1';box.innerHTML=buildBackup();document.body.appendChild(box);let ok=true;
+try{await html2pdf().set({margin:10,filename:`Backup_EquipeA_${dstr(n)}_${P(n.getHours())}h${P(n.getMinutes())}.pdf`,image:{type:'jpeg',quality:.95},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(box).save()}catch(e){console.error(e);ok=false}
+box.remove();if(!ok&&!confirm('⚠️ Échec de la sauvegarde PDF. Réinitialiser quand même, SANS sauvegarde ?'))return;
+localStorage.clear();queue=[...DW];points=Object.fromEntries(DW.map(w=>[w,Z()]));active=[];history=[];firePlans=[];fireHist=[];vhfA=[];vhfTotal=5;water={value:'',time:''};waterH=[];refuels=[];expiry=[];saveData()}
+setInterval(renderBanner,6e4);setDefaults();render();
+</script></body></html>
